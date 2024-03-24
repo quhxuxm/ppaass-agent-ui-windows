@@ -1,0 +1,36 @@
+:root {
+    margin-left: 5px;
+    margin-right: 5px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+}
+
+:root label {
+    font-size: 1.1em;
+    margin-left: 5px;
+    margin-right: auto;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding: 5px;
+    font-weight: bold;
+}
+
+:root input {
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    padding: 10px;
+    border: 1px solid #555555;
+    outline: none;
+    box-shadow: none;
+}
+
+:root span.hint {
+    font-size: 0.9em;
+    color: #555555;
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    padding: 5px;
+}

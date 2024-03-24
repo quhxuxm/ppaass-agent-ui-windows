@@ -1,0 +1,38 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.input_field_pannel{
+    border: 1px solid #333333;
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+}
+.button_pannel{
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    padding: 5px;
+    justify-items: end;
+    justify-content: end;
+}
+
+.status_pannel{
+    padding: 10px;
+    height: 20px;
+    margin-left: 10px;
+    margin-right: 10px;
+    border: 1px solid #333333;
+    color: #aaaaaa;
+    font-size: 0.8em;
+    font-weight: bold;
+}

@@ -1,0 +1,16 @@
+:root {
+    font-size: 1.1em;
+    margin: 10px;
+    padding: 10px;
+    font-weight: bold;
+    border-radius: 3;
+    outline: none;
+    box-shadow: none;
+    border: 1px solid #333333;
+    min-width: 100px;
+}
+:root:hover{
+    border: 1px solid #333333;
+    background-color: #eeeeee;
+}
+
