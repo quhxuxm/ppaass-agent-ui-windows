@@ -3,6 +3,7 @@ use yew::{classes, html, Classes, Html, Properties};
 
 #[derive(Properties, PartialEq)]
 pub struct ContainerProps {
+    #[prop_or(Classes::new())]
     pub classes: Classes,
     pub children: Html,
 }
