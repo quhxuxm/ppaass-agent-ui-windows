@@ -26,6 +26,11 @@
     box-shadow: none;
 }
 
+:root input:disabled {
+    border: 1px solid #555555;
+    color: #cccccc;
+}
+
 :root span.hint {
     font-size: 0.9em;
     color: #555555;

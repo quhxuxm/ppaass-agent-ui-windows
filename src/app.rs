@@ -49,6 +49,8 @@ pub fn generate_start_btn_callback(
             let args = to_value(&agent_ui_info_arg).unwrap();
             // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
             invoke_with_arg("start_vpn", args).await;
+            proxy_address_input_field.set_disabled(true);
+            user_token_input_field.set_disabled(true);
         });
     })
 }
