@@ -14,3 +14,7 @@
     background-color: #eeeeee;
 }
 
+:root:disabled{
+    color: #cccccc;
+}
+
