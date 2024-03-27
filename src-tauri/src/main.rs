@@ -13,30 +13,36 @@ use crate::error::PpaassAgentUiError;
 
 mod error;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentUiInfo {
+    #[serde(rename = "user_token")]
     user_token: String,
+    #[serde(rename = "proxy_address")]
     proxy_address: String,
+    #[serde(rename = "listening_port")]
     listening_port: String,
 }
 
-#[derive(Default)]
 pub struct AgentUiState {
+    current_ui_state: AgentUiInfo,
     agent_server_guard: Mutex<Option<AgentServerGuard>>,
 }
 
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
+fn load_ui_info(state: State<'_, AgentUiState>) -> String {
+    serde_json::to_string(&state.current_ui_state).unwrap()
+}
+
+#[tauri::command(rename_all = "snake_case")]
 async fn start_vpn(
     info: AgentUiInfo,
     state: State<'_, AgentUiState>,
 ) -> Result<(), PpaassAgentUiError> {
     println!("Receive agent ui info: {:?}", info);
-    let mut config = AgentConfig::parse();
+
     let proxy_addresses = info
         .proxy_address
-        .split(";")
-        .into_iter()
+        .split(';')
         .map(|item| item.to_string())
         .collect::<Vec<String>>();
     let listening_port = info.listening_port.parse::<u16>().map_err(|e| {
@@ -44,11 +50,12 @@ async fn start_vpn(
             "Fail to parse listening port because of error: {e:?}"
         ))
     })?;
-    // config.set_user_token(info.user_token);
-    // config.set_proxy_addresses(proxy_addresses);
-    config.set_port(listening_port);
-    let agent_server =
-        AgentServer::new(config).map_err(|e| PpaassAgentUiError::Agent(format!("{e:?}")))?;
+    let mut current_server_config = AgentConfig::parse();
+    current_server_config.set_user_token(info.user_token);
+    current_server_config.set_proxy_addresses(proxy_addresses);
+    current_server_config.set_port(listening_port);
+    let agent_server = AgentServer::new(current_server_config)
+        .map_err(|e| PpaassAgentUiError::Agent(format!("{e:?}")))?;
     let server_guard = agent_server.start();
     let mut agent_server_guard_state = state
         .agent_server_guard
@@ -58,7 +65,7 @@ async fn start_vpn(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 async fn stop_vpn(state: State<'_, AgentUiState>) -> Result<(), PpaassAgentUiError> {
     println!("Going to stop vpn");
     let mut agent_server_guard_state = state
@@ -70,9 +77,19 @@ async fn stop_vpn(state: State<'_, AgentUiState>) -> Result<(), PpaassAgentUiErr
 }
 
 fn main() {
+    let current_server_config = AgentConfig::parse();
+    let initial_state = AgentUiState {
+        current_ui_state: AgentUiInfo {
+            user_token: current_server_config.user_token().to_string(),
+            proxy_address: current_server_config.proxy_addresses().clone().join(";"),
+            listening_port: current_server_config.port().to_string(),
+        },
+        agent_server_guard: Mutex::new(None),
+    };
+
     tauri::Builder::default()
-        .manage(AgentUiState::default())
-        .invoke_handler(tauri::generate_handler![start_vpn, stop_vpn])
+        .manage(initial_state)
+        .invoke_handler(tauri::generate_handler![start_vpn, stop_vpn, load_ui_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

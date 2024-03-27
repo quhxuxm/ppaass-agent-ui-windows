@@ -10,6 +10,8 @@ pub struct InputFieldProps {
     pub place_holder: Option<String>,
     #[prop_or(Option::None)]
     pub hint: Option<String>,
+    #[prop_or(Option::None)]
+    pub value: Option<String>,
     #[prop_or(Classes::new())]
     pub classes: Classes,
     #[prop_or_default()]
@@ -25,9 +27,9 @@ pub fn input_field(props: &InputFieldProps) -> Html {
                 <label for={props.id.clone()}>{label}</label>
             }
             if let Some(place_holder) = &props.place_holder{
-                <input id={props.id.clone()} type="text" placeholder={place_holder.clone()} ref={&props.input_ref} />
+                <input id={props.id.clone()} type="text" placeholder={place_holder.clone()} ref={&props.input_ref} value={props.value.clone().unwrap_or("".to_string())}/>
             } else{
-                <input id={props.id.clone()} type="text" ref={&props.input_ref} />
+                <input id={props.id.clone()} type="text" ref={&props.input_ref} value={props.value.clone().unwrap_or("".to_string())} />
             }
             if let Some(hint) = &props.hint{
                 <span class="hint">{hint}</span>
