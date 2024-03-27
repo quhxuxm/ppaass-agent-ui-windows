@@ -1,6 +1,6 @@
 {
   "build": {
-    "beforeDevCommand": "trunk serve",
+    "beforeDevCommand": "trunk dev",
     "beforeBuildCommand": "trunk build",
     "devPath": "http://localhost:1420",
     "distDir": "../dist",
@@ -22,7 +22,7 @@
       {
         "title": "Ppaass Agent",
         "width": 500,
-        "height": 500,
+        "height": 640,
         "resizable": false
       }
     ],

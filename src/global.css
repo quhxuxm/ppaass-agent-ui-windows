@@ -3,7 +3,7 @@ body {
     padding: 0;
 }
 
-.input_field_pannel{
+.input_field_panel {
     border: 1px solid #333333;
     margin-left: 10px;
     margin-right: 10px;
@@ -13,7 +13,8 @@ body {
     flex-direction: column;
     padding: 5px;
 }
-.button_pannel{
+
+.button_panel {
     margin-left: 10px;
     margin-right: 10px;
     margin-top: 10px;
@@ -26,7 +27,7 @@ body {
     justify-content: end;
 }
 
-.status_pannel{
+.status_pannel {
     padding: 10px;
     height: 20px;
     margin-left: 10px;
