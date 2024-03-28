@@ -3,6 +3,7 @@ use serde_wasm_bindgen::{from_value, to_value};
 use stylist::{StyleSource, yew::Global};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
+use web_sys::HtmlButtonElement;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -39,11 +40,13 @@ pub fn generate_start_btn_callback(
     user_token_input_ref: NodeRef,
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
+    start_button_ref: NodeRef,
 ) -> Callback<web_sys::MouseEvent> {
     Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+        let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
         let agent_ui_info_arg = AgentUiInfoArg {
             info: AgentUiInfo {
                 user_token: user_token_input_field.value(),
@@ -58,6 +61,7 @@ pub fn generate_start_btn_callback(
             proxy_address_input_field.set_disabled(true);
             user_token_input_field.set_disabled(true);
             listening_port_field.set_disabled(true);
+            start_button.set_disabled(true);
         });
     })
 }
@@ -66,16 +70,19 @@ pub fn generate_stop_btn_callback(
     user_token_input_ref: NodeRef,
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
+    start_button_ref: NodeRef,
 ) -> Callback<web_sys::MouseEvent> {
     Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+        let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
         spawn_local(async move {
             invoke_without_arg("stop_vpn").await;
             proxy_address_input_field.set_disabled(false);
             user_token_input_field.set_disabled(false);
             listening_port_field.set_disabled(false);
+            start_button.set_disabled(false);
         });
     })
 }
@@ -105,6 +112,7 @@ pub fn ppaass_agent_ui() -> Html {
     let user_name_field_ref = NodeRef::default();
     let proxy_address_field_ref = NodeRef::default();
     let listening_port_field_ref = NodeRef::default();
+    let start_button_ref = NodeRef::default();
 
     let init_user_token_value = (*initial_ui_info_state.user_token).to_owned();
     let init_proxy_address_value = (*initial_ui_info_state.proxy_address).to_owned();
@@ -132,10 +140,10 @@ pub fn ppaass_agent_ui() -> Html {
             <Container classes="button_panel">
                 <Button id="register_button" label="Register" classes="button"
                 on_click={on_register_btn_click} />
-                <Button id="start_button" label="Start"  classes="button"
-                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone())} />
+                <Button id="start_button" label="Start" classes="button" button_ref={&start_button_ref}
+                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone())} />
                 <Button id="stop_button" label="Stop" classes="button"
-                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref)} />
+                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref)} />
             </Container>
             <Container classes="status_panel">
             {"Ready to start agent ..."}

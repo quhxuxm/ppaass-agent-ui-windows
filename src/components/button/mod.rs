@@ -1,5 +1,5 @@
-use stylist::{yew::styled_component, StyleSource};
-use yew::{html, Callback, Classes, Html, Properties};
+use stylist::{StyleSource, yew::styled_component};
+use yew::{Callback, Classes, html, Html, NodeRef, Properties};
 
 #[derive(Properties, PartialEq)]
 pub struct ButtonProps {
@@ -10,13 +10,15 @@ pub struct ButtonProps {
     pub classes: Classes,
     #[prop_or_default]
     pub on_click: Callback<web_sys::MouseEvent, ()>,
+    #[prop_or_default()]
+    pub button_ref: NodeRef,
 }
 
 #[styled_component(Button)]
 pub fn button(props: &ButtonProps) -> Html {
     let style = StyleSource::try_from(include_str!("button.css")).unwrap();
     html! {
-        <button class={style} onclick={props.on_click.clone()}>
+        <button ref={&props.button_ref} class={style} onclick={props.on_click.clone()}>
             {props.label.clone()}
         </button>
     }
