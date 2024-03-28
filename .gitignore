@@ -2,3 +2,5 @@
 /target/
 /Cargo.lock
 /.idea
+/log
+/src-tauri/log
