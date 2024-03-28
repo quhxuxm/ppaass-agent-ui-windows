@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::{from_value, to_value};
-use stylist::{yew::Global, StyleSource};
+use stylist::{StyleSource, yew::Global};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlInputElement;
-use yew::{platform::pinned::oneshot::channel, prelude::*};
+use yew::prelude::*;
 
 use crate::components::{button::Button, container::Container, input_field::InputField};
 
@@ -25,7 +25,7 @@ struct AgentUiInfoArg {
     info: AgentUiInfo,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 struct AgentUiInfo {
     #[serde(rename = "user_token")]
     user_token: String,
@@ -40,7 +40,7 @@ pub fn generate_start_btn_callback(
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
 ) -> Callback<web_sys::MouseEvent> {
-    Callback::from(move |event: web_sys::MouseEvent| {
+    Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
@@ -57,15 +57,27 @@ pub fn generate_start_btn_callback(
             invoke_with_arg("start_vpn", args).await;
             proxy_address_input_field.set_disabled(true);
             user_token_input_field.set_disabled(true);
+            listening_port_field.set_disabled(true);
         });
     })
 }
 
-pub fn on_stop_btn_click(event: web_sys::MouseEvent) {
-    gloo::console::info!("Receive stop event: {:?}", event);
-    spawn_local(async move {
-        invoke_without_arg("stop_vpn").await;
-    });
+pub fn generate_stop_btn_callback(
+    user_token_input_ref: NodeRef,
+    proxy_address_field_ref: NodeRef,
+    listening_port_field_ref: NodeRef,
+) -> Callback<web_sys::MouseEvent> {
+    Callback::from(move |_| {
+        let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
+        let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
+        let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+        spawn_local(async move {
+            invoke_without_arg("stop_vpn").await;
+            proxy_address_input_field.set_disabled(false);
+            user_token_input_field.set_disabled(false);
+            listening_port_field.set_disabled(false);
+        });
+    })
 }
 
 pub fn on_register_btn_click(event: web_sys::MouseEvent) {
@@ -74,36 +86,29 @@ pub fn on_register_btn_click(event: web_sys::MouseEvent) {
 
 #[function_component(PpaassAgentUi)]
 pub fn ppaass_agent_ui() -> Html {
-    let ui_info_state = use_state(|| AgentUiInfo {
+    let initial_ui_info_state = use_state_eq(|| AgentUiInfo {
         user_token: "".to_string(),
         listening_port: "".to_string(),
         proxy_address: "".to_string(),
     });
     {
-        let ui_info_state = ui_info_state.clone();
+        let initial_ui_info_state = initial_ui_info_state.clone();
         spawn_local(async move {
             let ui_info = load_ui_info("load_ui_info").await;
             let ui_info: String = from_value(ui_info).unwrap();
             let ui_info = serde_json::from_str::<AgentUiInfo>(&ui_info).unwrap();
-            gloo::console::info!(format!("Receive ui state from backend (1): {ui_info:?}"));
-            ui_info_state.set(ui_info);
+            initial_ui_info_state.set(ui_info);
         });
     }
 
-    gloo::console::info!(format!(
-        "Receive ui state from backend(2): {:?}",
-        *ui_info_state
-    ));
-    // let ui_info: AgentUiInfo = ui_info_js_val.try_into().unwrap();
-    // gloo::console::info!("Initial UI info: {}", format!("{ui_info:?}"));
     let global_style = StyleSource::try_from(include_str!("global.css")).unwrap();
     let user_name_field_ref = NodeRef::default();
     let proxy_address_field_ref = NodeRef::default();
     let listening_port_field_ref = NodeRef::default();
 
-    let init_user_token_value = (*ui_info_state.user_token).to_owned();
-    let init_proxy_address_value = (*ui_info_state.proxy_address).to_owned();
-    let init_listening_port_value = (*ui_info_state.listening_port).to_owned();
+    let init_user_token_value = (*initial_ui_info_state.user_token).to_owned();
+    let init_proxy_address_value = (*initial_ui_info_state.proxy_address).to_owned();
+    let init_listening_port_value = (*initial_ui_info_state.listening_port).to_owned();
 
     gloo::console::info!("Initial user token: {}", &init_user_token_value);
     gloo::console::info!("Initial proxy address: {}", &init_proxy_address_value);
@@ -119,20 +124,20 @@ pub fn ppaass_agent_ui() -> Html {
                 hint="Register to get user token" input_ref={&user_name_field_ref} value={init_user_token_value}/>
                 <InputField id="proxy_address" label={"Proxy address:"}
                 place_holder={"Enter proxy address"}
-                hint="Default proxy address is 127.0.0.1" input_ref={&proxy_address_field_ref} value={init_proxy_address_value}/>
+                hint={format!("Default proxy address is: {}",init_proxy_address_value)} input_ref={&proxy_address_field_ref} value={init_proxy_address_value}/>
                 <InputField id="listening_port" label={"Listening port:"}
                 place_holder={"Enter listening port"}
-                hint="Default listening port is 10080" input_ref={&listening_port_field_ref} value={init_listening_port_value}/>
+                hint={format!("Default listening port is: {}", init_listening_port_value)} input_ref={&listening_port_field_ref} value={init_listening_port_value}/>
             </Container>
             <Container classes="button_panel">
                 <Button id="register_button" label="Register" classes="button"
                 on_click={on_register_btn_click} />
                 <Button id="start_button" label="Start"  classes="button"
-                on_click={generate_start_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref)} />
+                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone())} />
                 <Button id="stop_button" label="Stop" classes="button"
-                on_click={on_stop_btn_click} />
+                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref)} />
             </Container>
-            <Container classes="status_pannel">
+            <Container classes="status_panel">
             {"Ready to start agent ..."}
             </Container>
         </>

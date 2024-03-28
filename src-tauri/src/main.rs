@@ -34,12 +34,8 @@ fn load_ui_info(state: State<'_, AgentUiState>) -> String {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn start_vpn(
-    info: AgentUiInfo,
-    state: State<'_, AgentUiState>,
-) -> Result<(), PpaassAgentUiError> {
+fn start_vpn(info: AgentUiInfo, state: State<'_, AgentUiState>) -> Result<(), PpaassAgentUiError> {
     println!("Receive agent ui info: {:?}", info);
-
     let proxy_addresses = info
         .proxy_address
         .split(';')
@@ -56,28 +52,23 @@ async fn start_vpn(
     current_server_config.set_port(listening_port);
     let agent_server = AgentServer::new(current_server_config)
         .map_err(|e| PpaassAgentUiError::Agent(format!("{e:?}")))?;
-    let server_guard = agent_server.start();
-    let mut agent_server_guard_state = state
-        .agent_server_guard
-        .lock()
-        .map_err(|e| PpaassAgentUiError::Other(format!("{e:?}")))?;
-    *agent_server_guard_state = Some(server_guard);
+    let agent_server_guard = agent_server.start();
+    let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
+    *agent_server_guard_state = Some(agent_server_guard);
     Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn stop_vpn(state: State<'_, AgentUiState>) -> Result<(), PpaassAgentUiError> {
+fn stop_vpn(state: State<'_, AgentUiState>) -> Result<(), PpaassAgentUiError> {
     println!("Going to stop vpn");
-    let mut agent_server_guard_state = state
-        .agent_server_guard
-        .lock()
-        .map_err(|e| PpaassAgentUiError::Other(format!("{e:?}")))?;
+    let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
     let _ = agent_server_guard_state.take();
     Ok(())
 }
 
 fn main() {
     let current_server_config = AgentConfig::parse();
+    let _log_guard = ppaass_agent::log::init_log(&current_server_config).expect("Fail to initialize log");
     let initial_state = AgentUiState {
         current_ui_state: AgentUiInfo {
             user_token: current_server_config.user_token().to_string(),

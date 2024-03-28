@@ -26,11 +26,11 @@ pub fn input_field(props: &InputFieldProps) -> Html {
             if let Some(label) = &props.label {
                 <label for={props.id.clone()}>{label}</label>
             }
-            if let Some(place_holder) = &props.place_holder{
-                <input id={props.id.clone()} type="text" placeholder={place_holder.clone()} ref={&props.input_ref} value={props.value.clone().unwrap_or("".to_string())}/>
-            } else{
-                <input id={props.id.clone()} type="text" ref={&props.input_ref} value={props.value.clone().unwrap_or("".to_string())} />
-            }
+            <input id={props.id.clone()}
+                type="text" ref={&props.input_ref}
+                placeholder={props.place_holder.clone()}
+                value={props.value.clone().unwrap_or("".to_string())}
+            />
             if let Some(hint) = &props.hint{
                 <span class="hint">{hint}</span>
             }
