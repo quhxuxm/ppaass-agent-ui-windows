@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use stylist::{yew::styled_component, StyleSource};
 use web_sys::HtmlInputElement;
-use yew::{classes, html, use_state, Callback, Classes, Event, Html, NodeRef, Properties};
+use yew::{classes, html, Callback, Classes, Html, NodeRef, Properties};
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum InputFieldDataType {
@@ -39,43 +39,40 @@ pub fn input_field(props: &InputFieldProps) -> Html {
         let input_ref = props.input_ref.clone();
         let data_type = props.data_type;
         Callback::from(move |_| {
-            let html_input = input_ref.cast::<HtmlInputElement>();
-            if let Some(html_input) = html_input {
-                let input_value = html_input.value();
-                match data_type {
-                    InputFieldDataType::Text => {}
-                    InputFieldDataType::Number { min, max } => {
-                        if input_value.is_empty() {
-                            return;
-                        }
-                        match input_value.parse::<i128>() {
-                            Ok(new_value) => {
-                                {
-                                    let old_input_state = input_state.borrow();
-                                    gloo::console::info!(
-                                        "The old value: {}, the new value: {}",
-                                        &old_input_state.to_string(),
-                                        new_value
-                                    );
-                                    if min > new_value || max < new_value {
-                                        html_input.set_value(&old_input_state);
-                                        return;
-                                    }
-                                    html_input.set_value(new_value.to_string().as_str());
-                                }
-                                input_state.replace(new_value.to_string());
-                            }
-                            Err(e) => {
-                                let old_input_state = input_state.borrow();
-                                gloo::console::info!(
-                                    "Recover to old value: {} because of error: {}",
-                                    &old_input_state.to_string(),
-                                    e.to_string()
-                                );
-
+            let html_input = match input_ref.cast::<HtmlInputElement>() {
+                Some(html_input) => html_input,
+                None => return,
+            };
+            let input_value = html_input.value();
+            if let InputFieldDataType::Number { min, max } = data_type {
+                if input_value.is_empty() {
+                    return;
+                }
+                match input_value.parse::<i128>() {
+                    Ok(new_value) => {
+                        {
+                            let old_input_state = input_state.borrow();
+                            gloo::console::info!(
+                                "The old value: {}, the new value: {}",
+                                &old_input_state.to_string(),
+                                new_value
+                            );
+                            if min > new_value || max < new_value {
                                 html_input.set_value(&old_input_state);
+                                return;
                             }
+                            html_input.set_value(new_value.to_string().as_str());
                         }
+                        input_state.replace(new_value.to_string());
+                    }
+                    Err(e) => {
+                        let old_input_state = input_state.borrow();
+                        gloo::console::info!(
+                            "Recover to old value: {} because of error: {}",
+                            &old_input_state.to_string(),
+                            e.to_string()
+                        );
+                        html_input.set_value(&old_input_state);
                     }
                 }
             }
