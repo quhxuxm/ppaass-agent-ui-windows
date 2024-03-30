@@ -17,6 +17,7 @@ mod error;
 const SYSTEM_TRAY_MENU_ITEM_START_AGENT: &str = "SYSTEM_TRAY_MENU_ITEM_START_AGENT";
 const SYSTEM_TRAY_MENU_ITEM_STOP_AGENT: &str = "SYSTEM_TRAY_MENU_ITEM_STOP_AGENT";
 const SYSTEM_TRAY_MENU_ITEM_EXIT: &str = "SYSTEM_TRAY_MENU_ITEM_EXIT";
+const MAIN_WINDOW_LABEL: &str = "main";
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentUiInfo {
@@ -98,19 +99,21 @@ fn main() {
     tauri::Builder::default()
         .system_tray(system_tray)
         .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::MenuItemClick { tray_id, id, .. } => match id.as_str() {
+            SystemTrayEvent::MenuItemClick {
+                id: menu_item_id, ..
+            } => match menu_item_id.as_str() {
                 SYSTEM_TRAY_MENU_ITEM_EXIT => {
                     std::process::exit(0);
                 }
                 SYSTEM_TRAY_MENU_ITEM_STOP_AGENT => {
-                    if let Some(window) = app.get_window("main") {
+                    if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentUiState>();
                         let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
                         let _ = agent_server_guard_state.take();
                     }
                 }
                 SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
-                    if let Some(window) = app.get_window("main") {
+                    if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentUiState>();
                         let proxy_addresses = state
                             .current_ui_state

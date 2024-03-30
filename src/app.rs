@@ -7,7 +7,11 @@ use web_sys::HtmlButtonElement;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::components::{button::Button, container::Container, input_field::InputField};
+use crate::components::{
+    button::Button,
+    container::Container,
+    input_field::{InputField, InputFieldDataType},
+};
 
 #[wasm_bindgen]
 extern "C" {
@@ -135,6 +139,7 @@ pub fn ppaass_agent_ui() -> Html {
                 hint={format!("Default proxy address is: {}",init_proxy_address_value)} input_ref={&proxy_address_field_ref} value={init_proxy_address_value}/>
                 <InputField id="listening_port" label={"Listening port:"}
                 place_holder={"Enter listening port"}
+                data_type={InputFieldDataType::Number{min: 0, max: 65535}}
                 hint={format!("Default listening port is: {}", init_listening_port_value)} input_ref={&listening_port_field_ref} value={init_listening_port_value}/>
             </Container>
             <Container classes="button_panel">
