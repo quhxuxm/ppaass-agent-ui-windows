@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::{from_value, to_value};
-use stylist::{StyleSource, yew::Global};
+use stylist::{yew::Global, StyleSource};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlButtonElement;
@@ -146,7 +146,7 @@ pub fn ppaass_agent_ui() -> Html {
                 on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref)} />
             </Container>
             <Container classes="status_panel">
-            {"Ready to start agent ..."}
+            {"change ..."}
             </Container>
         </>
     }

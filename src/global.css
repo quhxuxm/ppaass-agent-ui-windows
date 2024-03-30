@@ -1,6 +1,22 @@
+:root{
+    margin: 0;
+    padding: 0;
+    background-color: #FFFFFF;
+}
+
 body {
     margin: 0;
     padding: 0;
+    background-color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+}
+
+h1{
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
 .input_field_panel {
