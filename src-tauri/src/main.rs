@@ -35,8 +35,8 @@ pub struct AgentUiState {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn load_ui_info(state: State<'_, AgentUiState>) -> String {
-    serde_json::to_string(&state.current_ui_state).unwrap()
+fn load_ui_info(state: State<'_, AgentUiState>) -> AgentUiInfo {
+    state.current_ui_state.clone()
 }
 
 #[tauri::command(rename_all = "snake_case")]

@@ -1,5 +1,5 @@
-use stylist::{yew::styled_component, StyleSource};
-use yew::{classes, html, Classes, Html, Properties};
+use stylist::{StyleSource, yew::styled_component};
+use yew::{classes, Classes, html, Html, Properties};
 
 #[derive(Properties, PartialEq)]
 pub struct ContainerProps {

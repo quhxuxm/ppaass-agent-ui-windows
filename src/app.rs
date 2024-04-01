@@ -1,5 +1,6 @@
+use gloo::utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
-use serde_wasm_bindgen::{from_value, to_value};
+use serde_wasm_bindgen::to_value;
 use stylist::{yew::Global, StyleSource};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
@@ -15,14 +16,14 @@ use crate::components::{
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke")]
-    async fn invoke_with_arg(cmd: &str, args: JsValue);
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
+    async fn invoke_with_arg(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke")]
-    async fn invoke_without_arg(cmd: &str);
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
+    async fn invoke_without_arg(cmd: &str) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke")]
-    async fn load_ui_info(cmd: &str) -> JsValue;
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
+    async fn load_ui_info(cmd: &str) -> Result<JsValue, JsValue>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -45,6 +46,7 @@ pub fn generate_start_btn_callback(
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
     start_button_ref: NodeRef,
+    status_panel_state: UseStateHandle<String>,
 ) -> Callback<web_sys::MouseEvent> {
     Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
@@ -58,10 +60,13 @@ pub fn generate_start_btn_callback(
                 listening_port: listening_port_field.value(),
             },
         };
-
+        let status_panel_state = status_panel_state.clone();
         spawn_local(async move {
             let args = to_value(&agent_ui_info_arg).unwrap();
-            invoke_with_arg("start_vpn", args).await;
+            match invoke_with_arg("start_vpn", args).await {
+                Ok(_) => status_panel_state.set("Vpn started".to_string()),
+                Err(_) => status_panel_state.set("Vpn fail to start".to_string()),
+            };
             proxy_address_input_field.set_disabled(true);
             user_token_input_field.set_disabled(true);
             listening_port_field.set_disabled(true);
@@ -75,18 +80,21 @@ pub fn generate_stop_btn_callback(
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
     start_button_ref: NodeRef,
+    status_panel_state: UseStateHandle<String>,
 ) -> Callback<web_sys::MouseEvent> {
     Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
         let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+        let status_panel_state = status_panel_state.clone();
         spawn_local(async move {
-            invoke_without_arg("stop_vpn").await;
+            invoke_without_arg("stop_vpn").await.unwrap();
             proxy_address_input_field.set_disabled(false);
             user_token_input_field.set_disabled(false);
             listening_port_field.set_disabled(false);
             start_button.set_disabled(false);
+            status_panel_state.set("Vpn stopped.".to_string());
         });
     })
 }
@@ -97,6 +105,7 @@ pub fn on_register_btn_click(event: web_sys::MouseEvent) {
 
 #[function_component(PpaassAgentUi)]
 pub fn ppaass_agent_ui() -> Html {
+    let status_panel_state = use_state_eq(String::new);
     let initial_ui_info_state = use_state_eq(|| AgentUiInfo {
         user_token: "".to_string(),
         listening_port: "".to_string(),
@@ -104,11 +113,12 @@ pub fn ppaass_agent_ui() -> Html {
     });
     {
         let initial_ui_info_state = initial_ui_info_state.clone();
+        let status_panel_state = status_panel_state.clone();
         spawn_local(async move {
-            let ui_info = load_ui_info("load_ui_info").await;
-            let ui_info: String = from_value(ui_info).unwrap();
-            let ui_info = serde_json::from_str::<AgentUiInfo>(&ui_info).unwrap();
+            let ui_info = load_ui_info("load_ui_info").await.unwrap();
+            let ui_info: AgentUiInfo = ui_info.into_serde().unwrap();
             initial_ui_info_state.set(ui_info);
+            status_panel_state.set("Ready to start vpn".to_string())
         });
     }
 
@@ -121,10 +131,6 @@ pub fn ppaass_agent_ui() -> Html {
     let init_user_token_value = (*initial_ui_info_state.user_token).to_owned();
     let init_proxy_address_value = (*initial_ui_info_state.proxy_address).to_owned();
     let init_listening_port_value = (*initial_ui_info_state.listening_port).to_owned();
-
-    gloo::console::info!("Initial user token: {}", &init_user_token_value);
-    gloo::console::info!("Initial proxy address: {}", &init_proxy_address_value);
-    gloo::console::info!("Initial listening port: {}", &init_listening_port_value);
 
     html! {
         <>
@@ -146,12 +152,12 @@ pub fn ppaass_agent_ui() -> Html {
                 <Button id="register_button" label="Register" classes="button"
                 on_click={on_register_btn_click} />
                 <Button id="start_button" label="Start" classes="button" button_ref={&start_button_ref}
-                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone())} />
+                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone(), status_panel_state.clone())} />
                 <Button id="stop_button" label="Stop" classes="button"
-                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref)} />
+                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref, status_panel_state.clone())} />
             </Container>
             <Container classes="status_panel">
-            {"change ..."}
+            {(*status_panel_state).as_str()}
             </Container>
         </>
     }
