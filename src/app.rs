@@ -96,7 +96,7 @@ fn generate_start_btn_callback(
         let ui_state = ui_state.clone();
         spawn_local(async move {
             let args = to_value(&ui_arg).unwrap();
-            if let Err(e) = invoke_with_arg("start_vpn", args).await {
+            if (invoke_with_arg("start_vpn", args).await).is_err() {
                 let new_ui_state = UiState {
                     initialized: true,
                     user_token: config_info.user_token,
@@ -133,7 +133,6 @@ pub fn ppaass_agent_ui() -> Html {
     let listening_port_field_ref = use_node_ref();
     let start_button_ref = use_node_ref();
     let ui_state = use_state(UiState::default);
-    let status_detail = ui_state.status_detail.clone();
 
     if !ui_state.initialized {
         let ui_state = ui_state.clone();
@@ -201,6 +200,10 @@ pub fn ppaass_agent_ui() -> Html {
                     level: StatusLevel::Info,
                 },
             };
+            gloo::console::info!(
+                "Receive vpn stop window event from backend and going to reset ui state:",
+                format!("{new_ui_state:?}")
+            );
             proxy_address_input_field.set_disabled(false);
             user_token_input_field.set_disabled(false);
             listening_port_field.set_disabled(false);
@@ -244,12 +247,20 @@ pub fn ppaass_agent_ui() -> Html {
             user_token_input_field.set_disabled(true);
             listening_port_field.set_disabled(true);
             start_button.set_disabled(true);
+            gloo::console::info!(
+                "Receive vpn start window event from backend and going to reset ui with new state:",
+                format!("{new_ui_state:?}")
+            );
             ui_state.set(new_ui_state);
+            gloo::console::info!(
+                "Receive vpn start window event from backend after reset ui state:",
+                format!("{:?}", *ui_state)
+            );
         })
     };
 
     listen("vpn-start", vpn_start_event_callback.into_js_value());
-
+    let status_detail = ui_state.status_detail.clone();
     html! {
         <>
             <Global css={global_style} />
