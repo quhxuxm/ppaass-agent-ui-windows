@@ -45,8 +45,10 @@ fn load_ui_info(state: State<'_, AgentUiState>) -> AgentConfigInfo {
 fn start_vpn(
     config_info: AgentConfigInfo,
     state: State<'_, AgentUiState>,
+    window: Window,
 ) -> Result<(), PpaassAgentUiError> {
     println!("Receive agent ui info: {:?}", config_info);
+    let config_info_for_emit = config_info.clone();
     let proxy_addresses = config_info
         .proxy_address
         .split(';')
@@ -69,6 +71,7 @@ fn start_vpn(
     let agent_server_guard = agent_server.start();
     let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
     *agent_server_guard_state = Some(agent_server_guard);
+    window.emit("vpn-start", config_info_for_emit).unwrap();
     Ok(())
 }
 
@@ -94,13 +97,13 @@ fn main() {
         agent_server_guard: Mutex::new(None),
     };
 
-    // let start_menu_item =
-    //     CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_START_AGENT.to_string(), "Start agent");
+    let start_menu_item =
+        CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_START_AGENT.to_string(), "Start agent");
     let stop_menu_item =
         CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_STOP_AGENT.to_string(), "Stop agent");
     let exit_menu_item = CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_EXIT.to_string(), "Exit");
     let system_tray_menu = SystemTrayMenu::new()
-        // .add_item(start_menu_item)
+        .add_item(start_menu_item)
         .add_item(stop_menu_item)
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(exit_menu_item);
@@ -115,34 +118,36 @@ fn main() {
                     std::process::exit(0);
                 }
                 SYSTEM_TRAY_MENU_ITEM_STOP_AGENT => {
-                    if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
+                    if let Some(ref window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentUiState>();
                         let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
                         let _ = agent_server_guard_state.take();
                         window.emit("vpn-stop", ()).unwrap();
                     }
                 }
-                // SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
-                //     if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
-                //         let state = window.state::<AgentUiState>();
-                //         let proxy_addresses = state
-                //             .config_info
-                //             .proxy_address
-                //             .split(';')
-                //             .map(|item| item.to_string())
-                //             .collect::<Vec<String>>();
-                //         let listening_port =
-                //             state.config_info.listening_port.parse::<u16>().unwrap();
-                //         let mut current_server_config = AgentConfig::parse();
-                //         current_server_config.set_user_token(state.config_info.user_token.clone());
-                //         current_server_config.set_proxy_addresses(proxy_addresses);
-                //         current_server_config.set_port(listening_port);
-                //         let agent_server = AgentServer::new(current_server_config).unwrap();
-                //         let agent_server_guard = agent_server.start();
-                //         let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
-                //         *agent_server_guard_state = Some(agent_server_guard);
-                //     }
-                // }
+                SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
+                    if let Some(ref window) = app.get_window(MAIN_WINDOW_LABEL) {
+                        let state = window.state::<AgentUiState>();
+                        let config_info_for_emit = state.config_info.clone();
+                        let proxy_addresses = state
+                            .config_info
+                            .proxy_address
+                            .split(';')
+                            .map(|item| item.to_string())
+                            .collect::<Vec<String>>();
+                        let listening_port =
+                            state.config_info.listening_port.parse::<u16>().unwrap();
+                        let mut current_server_config = AgentConfig::parse();
+                        current_server_config.set_user_token(state.config_info.user_token.clone());
+                        current_server_config.set_proxy_addresses(proxy_addresses);
+                        current_server_config.set_port(listening_port);
+                        let agent_server = AgentServer::new(current_server_config).unwrap();
+                        let agent_server_guard = agent_server.start();
+                        let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
+                        *agent_server_guard_state = Some(agent_server_guard);
+                        window.emit("vpn-start", config_info_for_emit).unwrap();
+                    }
+                }
                 _ => {}
             },
             SystemTrayEvent::LeftClick { .. } => {
