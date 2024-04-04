@@ -115,6 +115,7 @@ fn generate_start_btn_callback(
                         },
                     };
                     ui_state.set(new_ui_state);
+                    return;
                 }
             };
             proxy_address_input_field.set_disabled(true);
@@ -166,6 +167,7 @@ pub fn on_register_btn_click(event: MouseEvent) {
 #[function_component(PpaassAgentUi)]
 pub fn ppaass_agent_ui() -> Html {
     let ui_state = use_state(UiState::default);
+
     if !ui_state.initialized {
         let ui_state = ui_state.clone();
         spawn_local(async move {
@@ -212,6 +214,9 @@ pub fn ppaass_agent_ui() -> Html {
     let start_button_ref = NodeRef::default();
 
     let status_detail = ui_state.status_detail.clone();
+    if !ui_state.initialized {
+        return html! {};
+    }
     html! {
         <>
             <Global css={global_style} />
