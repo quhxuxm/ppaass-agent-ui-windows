@@ -19,6 +19,10 @@ clap = "4.5"
 thiserror = "1.0"
 log = "0.4.21"
 tokio = "1.36.0"
+derive_more="0.99.17"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["chrono", "json"] }
+tracing-appender = "0.2"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

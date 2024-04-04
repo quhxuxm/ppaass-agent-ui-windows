@@ -1,7 +1,8 @@
+use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
-use stylist::{yew::Global, StyleSource};
+use stylist::{StyleSource, yew::Global};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlButtonElement;
@@ -27,45 +28,94 @@ extern "C" {
 }
 
 #[derive(Serialize, Deserialize)]
-struct AgentUiInfoArg {
-    info: AgentUiInfo,
+struct UiArg {
+    #[serde(rename = "config_info")]
+    config_info: AgentConfigInfo,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-struct AgentUiInfo {
-    #[serde(rename = "user_token")]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+struct AgentConfigInfo {
     user_token: String,
-    #[serde(rename = "proxy_address")]
     proxy_address: String,
-    #[serde(rename = "listening_port")]
     listening_port: String,
 }
 
-pub fn generate_start_btn_callback(
+#[derive(Debug, PartialEq, Eq, Clone, Default, Display)]
+enum StatusLevel {
+    #[display(fmt = "error")]
+    Error,
+    #[display(fmt = "info")]
+    #[default]
+    Info,
+    #[display(fmt = "warning")]
+    Warning,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+struct StatusDetail {
+    text: String,
+    level: StatusLevel,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+struct UiState {
+    initialized: bool,
+    user_token: String,
+    proxy_address: String,
+    listening_port: String,
+    status_detail: StatusDetail,
+}
+
+fn generate_start_btn_callback(
     user_token_input_ref: NodeRef,
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
     start_button_ref: NodeRef,
-    status_panel_state: UseStateHandle<String>,
-) -> Callback<web_sys::MouseEvent> {
+    ui_state: UseStateHandle<UiState>,
+) -> Callback<MouseEvent> {
     Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
         let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-        let agent_ui_info_arg = AgentUiInfoArg {
-            info: AgentUiInfo {
-                user_token: user_token_input_field.value(),
-                proxy_address: proxy_address_input_field.value(),
-                listening_port: listening_port_field.value(),
-            },
+        let config_info = AgentConfigInfo {
+            user_token: user_token_input_field.value(),
+            proxy_address: proxy_address_input_field.value(),
+            listening_port: listening_port_field.value(),
         };
-        let status_panel_state = status_panel_state.clone();
+        let ui_arg = UiArg {
+            config_info: config_info.clone(),
+        };
+        let ui_state = ui_state.clone();
         spawn_local(async move {
-            let args = to_value(&agent_ui_info_arg).unwrap();
+            let args = to_value(&ui_arg).unwrap();
             match invoke_with_arg("start_vpn", args).await {
-                Ok(_) => status_panel_state.set("Vpn started".to_string()),
-                Err(_) => status_panel_state.set("Vpn fail to start".to_string()),
+                Ok(_) => {
+                    let new_ui_state = UiState {
+                        initialized: true,
+                        user_token: config_info.user_token,
+                        proxy_address: config_info.proxy_address,
+                        listening_port: config_info.listening_port,
+                        status_detail: StatusDetail {
+                            text: "VPN started.".to_string(),
+                            level: StatusLevel::Info,
+                        },
+                    };
+                    ui_state.set(new_ui_state);
+                }
+                Err(_) => {
+                    let new_ui_state = UiState {
+                        initialized: true,
+                        user_token: config_info.user_token,
+                        proxy_address: config_info.proxy_address,
+                        listening_port: config_info.listening_port,
+                        status_detail: StatusDetail {
+                            text: "VPN fail to start.".to_string(),
+                            level: StatusLevel::Error,
+                        },
+                    };
+                    ui_state.set(new_ui_state);
+                }
             };
             proxy_address_input_field.set_disabled(true);
             user_token_input_field.set_disabled(true);
@@ -75,50 +125,83 @@ pub fn generate_start_btn_callback(
     })
 }
 
-pub fn generate_stop_btn_callback(
+fn generate_stop_btn_callback(
     user_token_input_ref: NodeRef,
     proxy_address_field_ref: NodeRef,
     listening_port_field_ref: NodeRef,
     start_button_ref: NodeRef,
-    status_panel_state: UseStateHandle<String>,
-) -> Callback<web_sys::MouseEvent> {
+    ui_state: UseStateHandle<UiState>,
+) -> Callback<MouseEvent> {
     Callback::from(move |_| {
         let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
         let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-        let status_panel_state = status_panel_state.clone();
+        let ui_state = ui_state.clone();
         spawn_local(async move {
             invoke_without_arg("stop_vpn").await.unwrap();
             proxy_address_input_field.set_disabled(false);
             user_token_input_field.set_disabled(false);
             listening_port_field.set_disabled(false);
             start_button.set_disabled(false);
-            status_panel_state.set("Vpn stopped.".to_string());
+            let new_ui_state = UiState {
+                initialized: true,
+                user_token: ui_state.user_token.clone(),
+                proxy_address: ui_state.proxy_address.clone(),
+                listening_port: ui_state.listening_port.clone(),
+                status_detail: StatusDetail {
+                    text: "VPN stopped.".to_string(),
+                    level: StatusLevel::Info,
+                },
+            };
+            ui_state.set(new_ui_state);
         });
     })
 }
 
-pub fn on_register_btn_click(event: web_sys::MouseEvent) {
+pub fn on_register_btn_click(event: MouseEvent) {
     gloo::console::info!("Receive register event: {:?}", event);
 }
 
 #[function_component(PpaassAgentUi)]
 pub fn ppaass_agent_ui() -> Html {
-    let status_panel_state = use_state_eq(String::new);
-    let initial_ui_info_state = use_state_eq(|| AgentUiInfo {
-        user_token: "".to_string(),
-        listening_port: "".to_string(),
-        proxy_address: "".to_string(),
-    });
-    {
-        let initial_ui_info_state = initial_ui_info_state.clone();
-        let status_panel_state = status_panel_state.clone();
+    let ui_state = use_state(UiState::default);
+    if !ui_state.initialized {
+        let ui_state = ui_state.clone();
         spawn_local(async move {
-            let ui_info = load_ui_info("load_ui_info").await.unwrap();
-            let ui_info: AgentUiInfo = ui_info.into_serde().unwrap();
-            initial_ui_info_state.set(ui_info);
-            status_panel_state.set("Ready to start vpn".to_string())
+            let config_info = match load_ui_info("load_ui_info").await {
+                Ok(config_info) => config_info,
+                Err(_) => {
+                    let new_ui_state = UiState {
+                        initialized: true,
+                        user_token: "".to_string(),
+                        proxy_address: "".to_string(),
+                        listening_port: "".to_string(),
+                        status_detail: StatusDetail {
+                            text: "Agent fail to initialize.".to_string(),
+                            level: StatusLevel::Info,
+                        },
+                    };
+                    ui_state.set(new_ui_state);
+                    return;
+                }
+            };
+
+            let config_info: AgentConfigInfo = config_info.into_serde().unwrap();
+            gloo::console::info!("Load config info:", format!("{config_info:?}"));
+            let new_ui_state = UiState {
+                initialized: true,
+                user_token: config_info.user_token,
+                proxy_address: config_info.proxy_address,
+                listening_port: config_info.listening_port,
+                status_detail: StatusDetail {
+                    text: "Agent initialize.".to_string(),
+                    level: StatusLevel::Info,
+                },
+            };
+            gloo::console::info!("Generate new ui state:", format!("{new_ui_state:?}"));
+            ui_state.set(new_ui_state);
+            gloo::console::info!("Agent initalized:", format!("{:?}", *ui_state));
         });
     }
 
@@ -128,10 +211,7 @@ pub fn ppaass_agent_ui() -> Html {
     let listening_port_field_ref = NodeRef::default();
     let start_button_ref = NodeRef::default();
 
-    let init_user_token_value = (*initial_ui_info_state.user_token).to_owned();
-    let init_proxy_address_value = (*initial_ui_info_state.proxy_address).to_owned();
-    let init_listening_port_value = (*initial_ui_info_state.listening_port).to_owned();
-
+    let status_detail = ui_state.status_detail.clone();
     html! {
         <>
             <Global css={global_style} />
@@ -139,25 +219,25 @@ pub fn ppaass_agent_ui() -> Html {
             <Container classes="input_field_panel">
                 <InputField id="user_token" label={"User token:"}
                 place_holder={"Enter user token"}
-                hint="Register to get user token" input_ref={&user_name_field_ref} value={init_user_token_value}/>
+                hint="Register to get user token" input_ref={&user_name_field_ref} value={ui_state.user_token.clone()}/>
                 <InputField id="proxy_address" label={"Proxy address:"}
                 place_holder={"Enter proxy address"}
-                hint={format!("Default proxy address is: {}",init_proxy_address_value)} input_ref={&proxy_address_field_ref} value={init_proxy_address_value}/>
+                hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={ui_state.proxy_address.clone()}/>
                 <InputField id="listening_port" label={"Listening port:"}
                 place_holder={"Enter listening port"}
                 data_type={InputFieldDataType::Number{min: 0, max: 65535}}
-                hint={format!("Default listening port is: {}", init_listening_port_value)} input_ref={&listening_port_field_ref} value={init_listening_port_value}/>
+                hint={"Listening port should between 0~65536"} input_ref={&listening_port_field_ref} value={ui_state.listening_port.clone()}/>
             </Container>
             <Container classes="button_panel">
                 <Button id="register_button" label="Register" classes="button"
                 on_click={on_register_btn_click} />
                 <Button id="start_button" label="Start" classes="button" button_ref={&start_button_ref}
-                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone(), status_panel_state.clone())} />
+                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone(), ui_state.clone())} />
                 <Button id="stop_button" label="Stop" classes="button"
-                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref, status_panel_state.clone())} />
+                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref, ui_state.clone())} />
             </Container>
             <Container classes="status_panel">
-            {(*status_panel_state).as_str()}
+                <span class={status_detail.level.to_string()}>{&*status_detail.text}</span>
             </Container>
         </>
     }

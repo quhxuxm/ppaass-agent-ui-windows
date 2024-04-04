@@ -53,3 +53,15 @@ h1{
     font-size: 0.8em;
     font-weight: bold;
 }
+
+.status_panel span.info{
+    color: blue;
+}
+
+.status_panel span.error{
+    color: red;
+}
+
+.status_panel span.warning{
+    color: orange;
+}
