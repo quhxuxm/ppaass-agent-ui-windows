@@ -2,11 +2,11 @@ use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
-use stylist::{StyleSource, yew::Global};
+use stylist::{yew::Global, StyleSource};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::HtmlButtonElement;
 use web_sys::HtmlInputElement;
+use web_sys::{window, HtmlButtonElement};
 use yew::prelude::*;
 
 use crate::components::{
@@ -17,6 +17,9 @@ use crate::components::{
 
 #[wasm_bindgen]
 extern "C" {
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"])]
+    fn listen(event_type: &str, callback: JsValue);
+
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
     async fn invoke_with_arg(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 
@@ -25,6 +28,7 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
     async fn load_ui_info(cmd: &str) -> Result<JsValue, JsValue>;
+
 }
 
 #[derive(Serialize, Deserialize)]
@@ -166,7 +170,13 @@ pub fn on_register_btn_click(event: MouseEvent) {
 
 #[function_component(PpaassAgentUi)]
 pub fn ppaass_agent_ui() -> Html {
+    let global_style = StyleSource::try_from(include_str!("global.css")).unwrap();
+    let user_token_field_ref = NodeRef::default();
+    let proxy_address_field_ref = NodeRef::default();
+    let listening_port_field_ref = NodeRef::default();
+    let start_button_ref = NodeRef::default();
     let ui_state = use_state(UiState::default);
+    let status_detail = ui_state.status_detail.clone();
 
     if !ui_state.initialized {
         let ui_state = ui_state.clone();
@@ -208,12 +218,41 @@ pub fn ppaass_agent_ui() -> Html {
         return html! {};
     }
 
-    let global_style = StyleSource::try_from(include_str!("global.css")).unwrap();
-    let user_name_field_ref = NodeRef::default();
-    let proxy_address_field_ref = NodeRef::default();
-    let listening_port_field_ref = NodeRef::default();
-    let start_button_ref = NodeRef::default();
-    let status_detail = ui_state.status_detail.clone();
+    let vpn_stop_event_callback = {
+        let user_token_field_ref = user_token_field_ref.clone();
+        let proxy_address_field_ref = proxy_address_field_ref.clone();
+        let listening_port_field_ref = listening_port_field_ref.clone();
+        let start_button_ref = start_button_ref.clone();
+        let ui_state = ui_state.clone();
+        Closure::<dyn Fn(JsValue)>::new(move |arg: JsValue| {
+            gloo::console::info!("Receive vpn stop window event from backend:", arg);
+            let user_token_input_field = user_token_field_ref.cast::<HtmlInputElement>().unwrap();
+            let proxy_address_input_field =
+                proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
+            let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+            let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+            gloo::console::info!(
+                "Receive vpn stop window event from backend and get all fields success"
+            );
+            proxy_address_input_field.set_disabled(false);
+            user_token_input_field.set_disabled(false);
+            listening_port_field.set_disabled(false);
+            start_button.set_disabled(false);
+            let new_ui_state = UiState {
+                initialized: true,
+                user_token: ui_state.user_token.clone(),
+                proxy_address: ui_state.proxy_address.clone(),
+                listening_port: ui_state.listening_port.clone(),
+                status_detail: StatusDetail {
+                    text: "VPN stopped.".to_string(),
+                    level: StatusLevel::Info,
+                },
+            };
+            ui_state.set(new_ui_state);
+        })
+    };
+    listen("vpn-stop", vpn_stop_event_callback.into_js_value());
+
     html! {
         <>
             <Global css={global_style} />
@@ -221,7 +260,7 @@ pub fn ppaass_agent_ui() -> Html {
             <Container classes="input_field_panel">
                 <InputField id="user_token" label={"User token:"}
                 place_holder={"Enter user token"}
-                hint="Register to get user token" input_ref={&user_name_field_ref} value={ui_state.user_token.clone()}/>
+                hint="Register to get user token" input_ref={&user_token_field_ref} value={ui_state.user_token.clone()}/>
                 <InputField id="proxy_address" label={"Proxy address:"}
                 place_holder={"Enter proxy address"}
                 hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={ui_state.proxy_address.clone()}/>
@@ -234,9 +273,9 @@ pub fn ppaass_agent_ui() -> Html {
                 <Button id="register_button" label="Register" classes="button"
                 on_click={on_register_btn_click} />
                 <Button id="start_button" label="Start" classes="button" button_ref={&start_button_ref}
-                on_click={generate_start_btn_callback(user_name_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone(), ui_state.clone())} />
+                on_click={generate_start_btn_callback(user_token_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), start_button_ref.clone(), ui_state.clone())} />
                 <Button id="stop_button" label="Stop" classes="button"
-                on_click={generate_stop_btn_callback(user_name_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref, ui_state.clone())} />
+                on_click={generate_stop_btn_callback(user_token_field_ref,proxy_address_field_ref, listening_port_field_ref, start_button_ref, ui_state.clone())} />
             </Container>
             <Container classes="status_panel">
                 <span class={status_detail.level.to_string()}>{&*status_detail.text}</span>

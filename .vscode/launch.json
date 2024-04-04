@@ -79,6 +79,12 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "type": "PowerShell",
+            "request": "launch",
+            "name": "Start trunk server",
+            "script": "trunk serve"
+        },
+        {
             "type": "lldb",
             "request": "launch",
             "name": "Tauri Development Debug",
@@ -90,7 +96,7 @@
                 ]
             },
             // task for the `beforeDevCommand` if used, must be configured in `.vscode/tasks.json`
-            "preLaunchTask": "tauri-before-dev"
+            // "preLaunchTask": "tauri-before-dev"
         },
         {
             "type": "lldb",
@@ -104,7 +110,7 @@
                 ]
             },
             // task for the `beforeBuildCommand` if used, must be configured in `.vscode/tasks.json`
-            "preLaunchTask": "tauri-before-build"
+            // "preLaunchTask": "tauri-before-build"
         }
     ]
 }
