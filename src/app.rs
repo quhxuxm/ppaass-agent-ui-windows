@@ -205,6 +205,7 @@ pub fn ppaass_agent_ui() -> Html {
             ui_state.set(new_ui_state);
             gloo::console::info!("Agent initalized:", format!("{:?}", *ui_state));
         });
+        return html! {};
     }
 
     let global_style = StyleSource::try_from(include_str!("global.css")).unwrap();
@@ -212,11 +213,7 @@ pub fn ppaass_agent_ui() -> Html {
     let proxy_address_field_ref = NodeRef::default();
     let listening_port_field_ref = NodeRef::default();
     let start_button_ref = NodeRef::default();
-
     let status_detail = ui_state.status_detail.clone();
-    if !ui_state.initialized {
-        return html! {};
-    }
     html! {
         <>
             <Global css={global_style} />
