@@ -1,16 +1,19 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::net::SocketAddr;
 use std::sync::Mutex;
 
 use clap::Parser;
 use ppaass_agent::config::AgentConfig;
-use ppaass_agent::server::{AgentServer, AgentServerGuard};
+use ppaass_agent::server::{AgentServer, AgentServerGuard, AgentServerSignal};
 use serde::{Deserialize, Serialize};
 use tauri::{
     CustomMenuItem, Manager, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
     SystemTrayMenuItem, Window, WindowEvent,
 };
+use tokio::task::JoinHandle;
+use tracing::error;
 
 use crate::error::PpaassAgentUiError;
 
@@ -29,6 +32,23 @@ pub struct AgentConfigInfo {
     proxy_address: String,
     #[serde(rename = "listening_port")]
     listening_port: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AgentServerSignalUiPayloadLevel {
+    Info,
+    Error,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AgentServerSignalUiPayload {
+    #[serde(rename = "client_socket_address")]
+    client_socket_address: Option<SocketAddr>,
+    #[serde(rename = "message")]
+    message: String,
+    #[serde(rename = "level")]
+    level: AgentServerSignalUiPayloadLevel,
+
 }
 
 pub struct AgentUiState {
@@ -68,21 +88,78 @@ fn start_vpn(
         tracing::error!("Fail to start agent server because of error: {e:?}");
         PpaassAgentUiError::Agent(format!("{e:?}"))
     })?;
-    let agent_server_guard = agent_server.start();
-    let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
-    *agent_server_guard_state = Some(agent_server_guard);
+    let (agent_server_guard, mut agent_server_signal_rx) = agent_server.start();
+    let mut agent_server_guard_lock = state.agent_server_guard.lock().unwrap();
+    *agent_server_guard_lock = Some(agent_server_guard);
     window.emit("vpnstart", config_info_for_emit).unwrap();
+
+    tauri::async_runtime::spawn(async move {
+        while let Some(agent_server_signal) = agent_server_signal_rx.recv().await {
+            match agent_server_signal {
+                AgentServerSignal::FailToListen(message) => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: None,
+                        level: AgentServerSignalUiPayloadLevel::Error,
+                        message,
+                    }).unwrap();
+                }
+                AgentServerSignal::SuccessToListen(message) => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: None,
+                        level: AgentServerSignalUiPayloadLevel::Info,
+                        message,
+                    }).unwrap();
+                }
+                AgentServerSignal::ClientConnectionAcceptSuccess { client_socket_address, message } => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: Some(client_socket_address),
+                        level: AgentServerSignalUiPayloadLevel::Info,
+                        message,
+                    }).unwrap();
+                }
+                AgentServerSignal::ClientConnectionAcceptFail(message) => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: None,
+                        level: AgentServerSignalUiPayloadLevel::Error,
+                        message,
+                    }).unwrap();
+                }
+                AgentServerSignal::ClientConnectionBeforeRelayFail { client_socket_address, message } => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: Some(client_socket_address),
+                        level: AgentServerSignalUiPayloadLevel::Error,
+                        message,
+                    }).unwrap();
+                }
+                AgentServerSignal::ClientConnectionReadProxyConnectionWriteClose { client_socket_address, message } => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: Some(client_socket_address),
+                        level: AgentServerSignalUiPayloadLevel::Info,
+                        message,
+                    }).unwrap();
+                }
+                AgentServerSignal::ClientConnectionWriteProxyConnectionReadClose { client_socket_address, message } => {
+                    window.emit("vpnsignal", AgentServerSignalUiPayload {
+                        client_socket_address: Some(client_socket_address),
+                        level: AgentServerSignalUiPayloadLevel::Info,
+                        message,
+                    }).unwrap();
+                }
+            }
+        }
+    });
     Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
 fn stop_vpn(state: State<'_, AgentUiState>, window: Window) -> Result<(), PpaassAgentUiError> {
     println!("Going to stop vpn");
-    let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
-    let _ = agent_server_guard_state.take();
+    let mut agent_server_guard = state.agent_server_guard.lock().unwrap();
+    let _ = agent_server_guard.take();
     window.emit("vpnstop", ()).unwrap();
     Ok(())
 }
+
 
 fn main() {
     let current_server_config = AgentConfig::parse();
@@ -118,34 +195,20 @@ fn main() {
                     std::process::exit(0);
                 }
                 SYSTEM_TRAY_MENU_ITEM_STOP_AGENT => {
-                    if let Some(ref window) = app.get_window(MAIN_WINDOW_LABEL) {
+                    if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentUiState>();
-                        let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
-                        let _ = agent_server_guard_state.take();
-                        window.emit("vpnstop", ()).unwrap();
+                        if let Err(e) = stop_vpn(state.clone(), window.clone()) {
+                            error!("Fail to stop vpn because of error: {e:?}");
+                        }
                     }
                 }
                 SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
-                    if let Some(ref window) = app.get_window(MAIN_WINDOW_LABEL) {
+                    if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentUiState>();
-                        let config_info_for_emit = state.config_info.clone();
-                        let proxy_addresses = state
-                            .config_info
-                            .proxy_address
-                            .split(';')
-                            .map(|item| item.to_string())
-                            .collect::<Vec<String>>();
-                        let listening_port =
-                            state.config_info.listening_port.parse::<u16>().unwrap();
-                        let mut current_server_config = AgentConfig::parse();
-                        current_server_config.set_user_token(state.config_info.user_token.clone());
-                        current_server_config.set_proxy_addresses(proxy_addresses);
-                        current_server_config.set_port(listening_port);
-                        let agent_server = AgentServer::new(current_server_config).unwrap();
-                        let agent_server_guard = agent_server.start();
-                        let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
-                        *agent_server_guard_state = Some(agent_server_guard);
-                        window.emit("vpnstart", config_info_for_emit).unwrap();
+                        let config_info = state.config_info.clone();
+                        if let Err(e) = start_vpn(config_info, state.clone(), window.clone()) {
+                            error!("Fail to start vpn because of error: {e:?}");
+                        };
                     }
                 }
                 _ => {}

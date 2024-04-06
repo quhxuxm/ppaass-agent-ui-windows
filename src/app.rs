@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use derive_more::Display;
@@ -11,6 +12,7 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlButtonElement;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
+
 use crate::components::button::Button;
 use crate::components::container::Container;
 use crate::components::input_field::{InputField, InputFieldDataType};
@@ -40,6 +42,29 @@ struct UiArg {
 struct EventPayload {
     #[serde(rename = "payload")]
     payload: AgentConfigInfo,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SignalPayload {
+    #[serde(rename = "payload")]
+    payload: AgentServerSignalPayloadContent,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AgentServerSignalLevel {
+    Info,
+    Error,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AgentServerSignalPayloadContent {
+    #[serde(rename = "client_socket_address")]
+    client_socket_address: Option<SocketAddr>,
+    #[serde(rename = "message")]
+    message: String,
+    #[serde(rename = "level")]
+    level: AgentServerSignalLevel,
+
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -234,14 +259,47 @@ pub fn ppaass_agent_ui() -> Html {
                 })
             };
 
+            let agent_signal_listener = {
+                let user_token_field_ref = user_token_field_ref.clone();
+                let proxy_address_field_ref = proxy_address_field_ref.clone();
+                let listening_port_field_ref = listening_port_field_ref.clone();
+                let start_button_ref = start_button_ref.clone();
+                let ui_state = ui_state.clone();
+                Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
+                    let signal_payload: SignalPayload = event.into_serde().unwrap();
+                    let agent_server_payload_content = signal_payload.payload;
+                    let new_ui_state = UiState {
+                        initialized: true,
+                        user_token: ui_state.user_token.clone(),
+                        proxy_address: ui_state.proxy_address.clone(),
+                        listening_port: ui_state.listening_port.clone(),
+                        status_detail: StatusDetail {
+                            text: agent_server_payload_content.message,
+                            level: match agent_server_payload_content.level {
+                                AgentServerSignalLevel::Info =>{
+                                    StatusLevel::Info
+                                }
+                                AgentServerSignalLevel::Error => {
+                                    StatusLevel::Error
+                                },
+                            },
+                        },
+                    };
+                    ui_state.set(new_ui_state);
+                })
+            };
+
             let vpn_start_window_listener = Arc::new(vpn_start_window_listener);
             let vpn_stop_window_listener = Arc::new(vpn_stop_window_listener);
+            let agent_signal_listener = Arc::new(agent_signal_listener);
             {
                 let vpn_start_window_listener = vpn_start_window_listener.clone();
                 let vpn_stop_window_listener = vpn_stop_window_listener.clone();
+                let agent_signal_listener = agent_signal_listener.clone();
                 spawn_local(async move {
                     let _ = listen("vpnstart", &vpn_start_window_listener).await;
                     let _ = listen("vpnstop", &vpn_stop_window_listener).await;
+                    let _ = listen("vpnsignal", &agent_signal_listener).await;
                 });
             }
 
@@ -251,6 +309,7 @@ pub fn ppaass_agent_ui() -> Html {
                 // When listener dropped the event will not be listened.
                 drop(vpn_start_window_listener);
                 drop(vpn_stop_window_listener);
+                drop(agent_signal_listener);
             }
         });
     }

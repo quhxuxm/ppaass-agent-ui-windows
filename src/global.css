@@ -52,13 +52,21 @@ h1 {
 
 .status_panel {
     padding: 10px;
-    height: 20px;
+    height: 35px;
     margin-left: 10px;
     margin-right: 10px;
     border: 1px solid #333333;
     color: #aaaaaa;
     font-size: 0.8em;
     font-weight: bold;
+}
+
+.status_panel span {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .status_panel span.info {
