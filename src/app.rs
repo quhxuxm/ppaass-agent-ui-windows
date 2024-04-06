@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
-use stylist::{yew::Global, StyleSource};
+use stylist::{StyleSource, yew::Global};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlButtonElement;
@@ -18,7 +19,7 @@ use crate::components::{
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"])]
-    fn listen(event_type: &str, callback: JsValue);
+    async fn listen(event_type: &str, callback: &Closure<dyn FnMut(JsValue)>) -> JsValue;
 
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
     async fn invoke_with_arg(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
@@ -134,6 +135,122 @@ pub fn ppaass_agent_ui() -> Html {
     let start_button_ref = use_node_ref();
     let ui_state = use_state(UiState::default);
 
+    {
+        let user_token_field_ref = user_token_field_ref.clone();
+        let proxy_address_field_ref = proxy_address_field_ref.clone();
+        let listening_port_field_ref = listening_port_field_ref.clone();
+        let start_button_ref = start_button_ref.clone();
+        let ui_state = ui_state.clone();
+        use_effect(move || {
+            let vpn_start_window_listener = {
+                let user_token_field_ref = user_token_field_ref.clone();
+                let proxy_address_field_ref = proxy_address_field_ref.clone();
+                let listening_port_field_ref = listening_port_field_ref.clone();
+                let start_button_ref = start_button_ref.clone();
+                let ui_state = ui_state.clone();
+
+                Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
+                    let event_payload: EventPayload = event.into_serde().unwrap();
+                    let config_info = event_payload.payload;
+                    gloo::console::info!(
+                        "Receive vpn start window event from backend:",
+                        format!("{:?}", config_info.clone())
+                    );
+                    let user_token_input_field =
+                        user_token_field_ref.cast::<HtmlInputElement>().unwrap();
+                    let proxy_address_input_field =
+                        proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
+                    let listening_port_field =
+                        listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+                    let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+
+                    let new_ui_state = UiState {
+                        initialized: true,
+                        user_token: config_info.user_token,
+                        proxy_address: config_info.proxy_address,
+                        listening_port: config_info.listening_port.clone(),
+                        status_detail: StatusDetail {
+                            text: format!(
+                                "VPN started, listening on port: {}",
+                                config_info.listening_port
+                            ),
+                            level: StatusLevel::Info,
+                        },
+                    };
+                    proxy_address_input_field.set_disabled(true);
+                    user_token_input_field.set_disabled(true);
+                    listening_port_field.set_disabled(true);
+                    start_button.set_disabled(true);
+                    gloo::console::info!(
+                    "Receive vpn start window event from backend and going to reset ui with new state:",
+                    format!("{new_ui_state:?}"));
+                    ui_state.set(new_ui_state);
+
+                    gloo::console::info!(
+                        "Receive vpn start window event from backend after reset ui state:",
+                        format!("{:?}", *ui_state)
+                    );
+                })
+            };
+
+            let vpn_stop_window_listener = {
+                let user_token_field_ref = user_token_field_ref.clone();
+                let proxy_address_field_ref = proxy_address_field_ref.clone();
+                let listening_port_field_ref = listening_port_field_ref.clone();
+                let start_button_ref = start_button_ref.clone();
+                let ui_state = ui_state.clone();
+                Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
+                    gloo::console::info!("Receive vpn stop window event from backend:", event);
+                    let user_token_input_field =
+                        user_token_field_ref.cast::<HtmlInputElement>().unwrap();
+                    let proxy_address_input_field =
+                        proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
+                    let listening_port_field =
+                        listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+                    let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+                    gloo::console::info!(
+                        "Receive vpn stop window event from backend and get all fields success"
+                    );
+                    let new_ui_state = UiState {
+                        initialized: true,
+                        user_token: ui_state.user_token.clone(),
+                        proxy_address: ui_state.proxy_address.clone(),
+                        listening_port: ui_state.listening_port.clone(),
+                        status_detail: StatusDetail {
+                            text: "VPN stopped.".to_string(),
+                            level: StatusLevel::Info,
+                        },
+                    };
+                    gloo::console::info!(
+                        "Receive vpn stop window event from backend and going to reset ui state:",
+                        format!("{new_ui_state:?}")
+                    );
+                    proxy_address_input_field.set_disabled(false);
+                    user_token_input_field.set_disabled(false);
+                    listening_port_field.set_disabled(false);
+                    start_button.set_disabled(false);
+                    ui_state.set(new_ui_state);
+                })
+            };
+            
+            let vpn_start_window_listener=Arc::new(vpn_start_window_listener);
+            let vpn_stop_window_listener=Arc::new(vpn_stop_window_listener);
+            {
+                let vpn_start_window_listener=vpn_start_window_listener.clone();
+                let vpn_stop_window_listener=vpn_stop_window_listener.clone();
+                spawn_local(async move {
+                    let _ = listen("vpnstart", &vpn_start_window_listener).await;
+                    let _ = listen("vpnstop", &vpn_stop_window_listener).await;
+                });
+            }
+
+            move || {
+                drop(vpn_start_window_listener);
+                drop(vpn_stop_window_listener);
+            }
+        });
+    }
+
     if !ui_state.initialized {
         let ui_state = ui_state.clone();
         spawn_local(async move {
@@ -171,96 +288,12 @@ pub fn ppaass_agent_ui() -> Html {
             ui_state.set(new_ui_state);
             gloo::console::info!("Agent initalized:", format!("{:?}", *ui_state));
         });
-        return html! {};
     }
 
-    let vpn_stop_event_callback = {
-        let user_token_field_ref = user_token_field_ref.clone();
-        let proxy_address_field_ref = proxy_address_field_ref.clone();
-        let listening_port_field_ref = listening_port_field_ref.clone();
-        let start_button_ref = start_button_ref.clone();
-        let ui_state = ui_state.clone();
-        Closure::<dyn Fn(JsValue)>::new(move |arg: JsValue| {
-            gloo::console::info!("Receive vpn stop window event from backend:", arg);
-            let user_token_input_field = user_token_field_ref.cast::<HtmlInputElement>().unwrap();
-            let proxy_address_input_field =
-                proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
-            let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
-            let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-            gloo::console::info!(
-                "Receive vpn stop window event from backend and get all fields success"
-            );
-            let new_ui_state = UiState {
-                initialized: true,
-                user_token: ui_state.user_token.clone(),
-                proxy_address: ui_state.proxy_address.clone(),
-                listening_port: ui_state.listening_port.clone(),
-                status_detail: StatusDetail {
-                    text: "VPN stopped.".to_string(),
-                    level: StatusLevel::Info,
-                },
-            };
-            gloo::console::info!(
-                "Receive vpn stop window event from backend and going to reset ui state:",
-                format!("{new_ui_state:?}")
-            );
-            proxy_address_input_field.set_disabled(false);
-            user_token_input_field.set_disabled(false);
-            listening_port_field.set_disabled(false);
-            start_button.set_disabled(false);
-            ui_state.set(new_ui_state);
-        })
-    };
-
-    listen("vpn-stop", vpn_stop_event_callback.into_js_value());
-
-    let vpn_start_event_callback = {
-        let user_token_field_ref = user_token_field_ref.clone();
-        let proxy_address_field_ref = proxy_address_field_ref.clone();
-        let listening_port_field_ref = listening_port_field_ref.clone();
-        let start_button_ref = start_button_ref.clone();
-        let ui_state = ui_state.clone();
-        Closure::<dyn Fn(JsValue)>::new(move |arg: JsValue| {
-            let event_payload: EventPayload = arg.into_serde().unwrap();
-            let config_info = event_payload.payload;
-            gloo::console::info!("Receive vpn start window event from backend");
-            let user_token_input_field = user_token_field_ref.cast::<HtmlInputElement>().unwrap();
-            let proxy_address_input_field =
-                proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
-            let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
-            let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-
-            let new_ui_state = UiState {
-                initialized: true,
-                user_token: config_info.user_token,
-                proxy_address: config_info.proxy_address,
-                listening_port: config_info.listening_port.clone(),
-                status_detail: StatusDetail {
-                    text: format!(
-                        "VPN started, listening on port: {}",
-                        config_info.listening_port
-                    ),
-                    level: StatusLevel::Info,
-                },
-            };
-            proxy_address_input_field.set_disabled(true);
-            user_token_input_field.set_disabled(true);
-            listening_port_field.set_disabled(true);
-            start_button.set_disabled(true);
-            gloo::console::info!(
-                "Receive vpn start window event from backend and going to reset ui with new state:",
-                format!("{new_ui_state:?}")
-            );
-            ui_state.set(new_ui_state);
-            gloo::console::info!(
-                "Receive vpn start window event from backend after reset ui state:",
-                format!("{:?}", *ui_state)
-            );
-        })
-    };
-
-    listen("vpn-start", vpn_start_event_callback.into_js_value());
     let status_detail = ui_state.status_detail.clone();
+    let user_token = ui_state.user_token.clone();
+    let proxy_address = ui_state.proxy_address.clone();
+    let listening_port = ui_state.listening_port.clone();
     html! {
         <>
             <Global css={global_style} />
@@ -268,14 +301,14 @@ pub fn ppaass_agent_ui() -> Html {
             <Container classes="input_field_panel">
                 <InputField id="user_token" label={"User token:"}
                 place_holder={"Enter user token"}
-                hint="Register to get user token" input_ref={&user_token_field_ref} value={ui_state.user_token.clone()}/>
+                hint="Register to get user token" input_ref={&user_token_field_ref} value={user_token}/>
                 <InputField id="proxy_address" label={"Proxy address:"}
                 place_holder={"Enter proxy address"}
-                hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={ui_state.proxy_address.clone()}/>
+                hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={proxy_address}/>
                 <InputField id="listening_port" label={"Listening port:"}
                 place_holder={"Enter listening port"}
                 data_type={InputFieldDataType::Number{min: 0, max: 65535}}
-                hint={"Listening port should between 0~65536"} input_ref={&listening_port_field_ref} value={ui_state.listening_port.clone()}/>
+                hint={"Listening port should between 0~65536"} input_ref={&listening_port_field_ref} value={listening_port}/>
             </Container>
             <Container classes="button_panel">
                 <Button id="register_button" label="Register" classes="button"

@@ -71,7 +71,7 @@ fn start_vpn(
     let agent_server_guard = agent_server.start();
     let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
     *agent_server_guard_state = Some(agent_server_guard);
-    window.emit("vpn-start", config_info_for_emit).unwrap();
+    window.emit("vpnstart", config_info_for_emit).unwrap();
     Ok(())
 }
 
@@ -80,7 +80,7 @@ fn stop_vpn(state: State<'_, AgentUiState>, window: Window) -> Result<(), Ppaass
     println!("Going to stop vpn");
     let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
     let _ = agent_server_guard_state.take();
-    window.emit("vpn-stop", ()).unwrap();
+    window.emit("vpnstop", ()).unwrap();
     Ok(())
 }
 
@@ -122,7 +122,7 @@ fn main() {
                         let state = window.state::<AgentUiState>();
                         let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
                         let _ = agent_server_guard_state.take();
-                        window.emit("vpn-stop", ()).unwrap();
+                        window.emit("vpnstop", ()).unwrap();
                     }
                 }
                 SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
@@ -145,7 +145,7 @@ fn main() {
                         let agent_server_guard = agent_server.start();
                         let mut agent_server_guard_state = state.agent_server_guard.lock().unwrap();
                         *agent_server_guard_state = Some(agent_server_guard);
-                        window.emit("vpn-start", config_info_for_emit).unwrap();
+                        window.emit("vpnstart", config_info_for_emit).unwrap();
                     }
                 }
                 _ => {}
