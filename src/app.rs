@@ -1,16 +1,16 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
+use std::{net::SocketAddr, rc::Rc};
 
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
-use stylist::StyleSource;
 use stylist::yew::Global;
+use stylist::StyleSource;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::HtmlButtonElement;
 use web_sys::HtmlInputElement;
+use web_sys::{HtmlButtonElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 use crate::components::button::Button;
@@ -64,7 +64,6 @@ pub struct AgentServerSignalPayloadContent {
     message: String,
     #[serde(rename = "level")]
     level: AgentServerSignalLevel,
-
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -158,6 +157,7 @@ pub fn ppaass_agent_ui() -> Html {
     let proxy_address_field_ref = use_node_ref();
     let listening_port_field_ref = use_node_ref();
     let start_button_ref = use_node_ref();
+    let logging_information_textarea = use_node_ref();
     let ui_state = use_state(UiState::default);
 
     {
@@ -166,6 +166,7 @@ pub fn ppaass_agent_ui() -> Html {
         let listening_port_field_ref = listening_port_field_ref.clone();
         let start_button_ref = start_button_ref.clone();
         let ui_state = ui_state.clone();
+        let logging_information_textarea = logging_information_textarea.clone();
         use_effect(move || {
             //Do the logic when component initialize
             let vpn_start_window_listener = {
@@ -260,10 +261,6 @@ pub fn ppaass_agent_ui() -> Html {
             };
 
             let agent_signal_listener = {
-                let user_token_field_ref = user_token_field_ref.clone();
-                let proxy_address_field_ref = proxy_address_field_ref.clone();
-                let listening_port_field_ref = listening_port_field_ref.clone();
-                let start_button_ref = start_button_ref.clone();
                 let ui_state = ui_state.clone();
                 Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
                     let signal_payload: SignalPayload = event.into_serde().unwrap();
@@ -274,24 +271,38 @@ pub fn ppaass_agent_ui() -> Html {
                         proxy_address: ui_state.proxy_address.clone(),
                         listening_port: ui_state.listening_port.clone(),
                         status_detail: StatusDetail {
-                            text: agent_server_payload_content.message,
+                            text: agent_server_payload_content.message.clone(),
                             level: match agent_server_payload_content.level {
-                                AgentServerSignalLevel::Info =>{
-                                    StatusLevel::Info
-                                }
-                                AgentServerSignalLevel::Error => {
-                                    StatusLevel::Error
-                                },
+                                AgentServerSignalLevel::Info => StatusLevel::Info,
+                                AgentServerSignalLevel::Error => StatusLevel::Error,
                             },
                         },
                     };
                     ui_state.set(new_ui_state);
+                    let logging_information_textarea = logging_information_textarea
+                        .cast::<HtmlTextAreaElement>()
+                        .unwrap();
+                    let origianl_logging_text_value = logging_information_textarea.value();
+                    let all_original_logging_lines =
+                        origianl_logging_text_value.lines().collect::<Vec<&str>>();
+                    let mut start_index = all_original_logging_lines.len() as isize - 100;
+                    if start_index < 0 {
+                        start_index = 0;
+                    }
+                    let all_original_logging_lines =
+                        &all_original_logging_lines[start_index as usize..];
+                    let mut logging_text_value = all_original_logging_lines.join("\n");
+                    logging_text_value.push('\n');
+                    logging_text_value.push_str(&agent_server_payload_content.message);
+                    logging_information_textarea.set_value(&logging_text_value);
+                    let scroll_height = logging_information_textarea.scroll_height();
+                    logging_information_textarea.set_scroll_top(scroll_height);
                 })
             };
 
-            let vpn_start_window_listener = Arc::new(vpn_start_window_listener);
-            let vpn_stop_window_listener = Arc::new(vpn_stop_window_listener);
-            let agent_signal_listener = Arc::new(agent_signal_listener);
+            let vpn_start_window_listener = Rc::new(vpn_start_window_listener);
+            let vpn_stop_window_listener = Rc::new(vpn_stop_window_listener);
+            let agent_signal_listener = Rc::new(agent_signal_listener);
             {
                 let vpn_start_window_listener = vpn_start_window_listener.clone();
                 let vpn_stop_window_listener = vpn_stop_window_listener.clone();
@@ -367,29 +378,35 @@ pub fn ppaass_agent_ui() -> Html {
     html! {
         <>
             <Global css={global_style} />
-            <h1>{"Ppaass Agent"}</h1>
-            <Container classes="input_field_panel">
-                <InputField id="user_token" label={"User token:"}
-                place_holder={"Enter user token"}
-                hint="Register to get user token" input_ref={&user_token_field_ref} value={user_token}/>
-                <InputField id="proxy_address" label={"Proxy address:"}
-                place_holder={"Enter proxy address"}
-                hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={proxy_address}/>
-                <InputField id="listening_port" label={"Listening port:"}
-                place_holder={"Enter listening port"}
-                data_type={InputFieldDataType::Number{min: 0, max: 65535}}
-                hint={"Listening port should between 0~65536"} input_ref={&listening_port_field_ref} value={listening_port}/>
+            <Container classes="left_panel">
+                <h1>{"Ppaass Agent"}</h1>
+                <Container classes="input_field_panel">
+                    <InputField id="user_token" label={"User token:"}
+                    place_holder={"Enter user token"}
+                    hint="Register to get user token" input_ref={&user_token_field_ref} value={user_token}/>
+                    <InputField id="proxy_address" label={"Proxy address:"}
+                    place_holder={"Enter proxy address"}
+                    hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={proxy_address}/>
+                    <InputField id="listening_port" label={"Listening port:"}
+                    place_holder={"Enter listening port"}
+                    data_type={InputFieldDataType::Number{min: 0, max: 65535}}
+                    hint={"Listening port should between 0~65536"} input_ref={&listening_port_field_ref} value={listening_port}/>
+                </Container>
+                <Container classes="button_panel">
+                    <Button id="register_button" label="Register" classes="button"
+                    on_click={on_register_btn_click} />
+                    <Button id="start_button" label="Start" classes="button" button_ref={&start_button_ref}
+                    on_click={generate_start_btn_callback(user_token_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), ui_state.clone())} />
+                    <Button id="stop_button" label="Stop" classes="button"
+                    on_click={generate_stop_btn_callback()} />
+                </Container>
+                <Container classes="status_panel">
+                    <span class={status_detail.level.to_string()}>{&*status_detail.text}</span>
+                </Container>
             </Container>
-            <Container classes="button_panel">
-                <Button id="register_button" label="Register" classes="button"
-                on_click={on_register_btn_click} />
-                <Button id="start_button" label="Start" classes="button" button_ref={&start_button_ref}
-                on_click={generate_start_btn_callback(user_token_field_ref.clone(),proxy_address_field_ref.clone(), listening_port_field_ref.clone(), ui_state.clone())} />
-                <Button id="stop_button" label="Stop" classes="button"
-                on_click={generate_stop_btn_callback()} />
-            </Container>
-            <Container classes="status_panel">
-                <span class={status_detail.level.to_string()}>{&*status_detail.text}</span>
+            <Container classes="right_panel">
+                <label for="logging_textarea">{"Logging information "}</label>
+                <textarea id="logging_textarea" ref={logging_information_textarea} readonly={true}></textarea>
             </Container>
         </>
     }
