@@ -1,4 +1,4 @@
-:root{
+:root {
     margin: 0;
     padding: 0;
     background-color: #FFFFFF;
@@ -12,11 +12,18 @@ body {
     flex-direction: column;
 }
 
-h1{
+h1 {
     margin-left: auto;
     margin-right: auto;
     margin-top: 15px;
     margin-bottom: 15px;
+}
+
+.loading_message {
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 250px;
+    font-size: 2em;
 }
 
 .input_field_panel {
@@ -54,14 +61,14 @@ h1{
     font-weight: bold;
 }
 
-.status_panel span.info{
+.status_panel span.info {
     color: blue;
 }
 
-.status_panel span.error{
+.status_panel span.error {
     color: red;
 }
 
-.status_panel span.warning{
+.status_panel span.warning {
     color: orange;
 }

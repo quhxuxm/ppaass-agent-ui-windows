@@ -1,35 +1,33 @@
 use std::sync::Arc;
+
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::to_value;
-use stylist::{StyleSource, yew::Global};
+use stylist::StyleSource;
+use stylist::yew::Global;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlButtonElement;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-
-use crate::components::{
-    button::Button,
-    container::Container,
-    input_field::{InputField, InputFieldDataType},
-};
+use crate::components::button::Button;
+use crate::components::container::Container;
+use crate::components::input_field::{InputField, InputFieldDataType};
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"])]
     async fn listen(event_type: &str, callback: &Closure<dyn FnMut(JsValue)>) -> JsValue;
 
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
     async fn invoke_with_arg(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
     async fn invoke_without_arg(cmd: &str) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name ="invoke", catch)]
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
     async fn load_ui_info(cmd: &str) -> Result<JsValue, JsValue>;
-
 }
 
 #[derive(Serialize, Deserialize)]
@@ -37,11 +35,13 @@ struct UiArg {
     #[serde(rename = "config_info")]
     config_info: AgentConfigInfo,
 }
+
 #[derive(Serialize, Deserialize)]
 struct EventPayload {
     #[serde(rename = "payload")]
     payload: AgentConfigInfo,
 }
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 struct AgentConfigInfo {
     user_token: String,
@@ -142,6 +142,7 @@ pub fn ppaass_agent_ui() -> Html {
         let start_button_ref = start_button_ref.clone();
         let ui_state = ui_state.clone();
         use_effect(move || {
+            //Do the logic when component initialize
             let vpn_start_window_listener = {
                 let user_token_field_ref = user_token_field_ref.clone();
                 let proxy_address_field_ref = proxy_address_field_ref.clone();
@@ -232,12 +233,12 @@ pub fn ppaass_agent_ui() -> Html {
                     ui_state.set(new_ui_state);
                 })
             };
-            
-            let vpn_start_window_listener=Arc::new(vpn_start_window_listener);
-            let vpn_stop_window_listener=Arc::new(vpn_stop_window_listener);
+
+            let vpn_start_window_listener = Arc::new(vpn_start_window_listener);
+            let vpn_stop_window_listener = Arc::new(vpn_stop_window_listener);
             {
-                let vpn_start_window_listener=vpn_start_window_listener.clone();
-                let vpn_stop_window_listener=vpn_stop_window_listener.clone();
+                let vpn_start_window_listener = vpn_start_window_listener.clone();
+                let vpn_stop_window_listener = vpn_stop_window_listener.clone();
                 spawn_local(async move {
                     let _ = listen("vpnstart", &vpn_start_window_listener).await;
                     let _ = listen("vpnstop", &vpn_stop_window_listener).await;
@@ -245,6 +246,9 @@ pub fn ppaass_agent_ui() -> Html {
             }
 
             move || {
+                // Do the logic when component destroy
+                // The listener must drop here otherwise it will cause multiple listener registered.
+                // When listener dropped the event will not be listened.
                 drop(vpn_start_window_listener);
                 drop(vpn_stop_window_listener);
             }
@@ -286,14 +290,21 @@ pub fn ppaass_agent_ui() -> Html {
             };
             gloo::console::info!("Generate new ui state:", format!("{new_ui_state:?}"));
             ui_state.set(new_ui_state);
-            gloo::console::info!("Agent initalized:", format!("{:?}", *ui_state));
+            gloo::console::info!("Agent initialized:", format!("{:?}", *ui_state));
         });
+        return html! {
+            <>
+                <Global css={global_style} />
+                <div class="loading_message">{"Loading ... "}</div>
+            </>
+        };
     }
 
     let status_detail = ui_state.status_detail.clone();
     let user_token = ui_state.user_token.clone();
     let proxy_address = ui_state.proxy_address.clone();
     let listening_port = ui_state.listening_port.clone();
+
     html! {
         <>
             <Global css={global_style} />
