@@ -14,7 +14,7 @@ tauri-build = { version = "1", features = [] }
 tauri = { version = "1", features = ["system-tray", "shell-open"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-ppaass-agent = "0.1.11"
+ppaass-agent = "0.1.13"
 clap = "4.5"
 thiserror = "1.0"
 log = "0.4.21"

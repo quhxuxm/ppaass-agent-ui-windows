@@ -15,7 +15,7 @@ body {
 }
 
 .left_panel {
-    width: 49%;
+    width: 390px;
 }
 
 .loading_message {
@@ -81,7 +81,7 @@ body {
 }
 
 .right_panel {
-    width: 49%;
+    width: 390px;
     display: flex;
     flex-direction: column;
 }
@@ -104,4 +104,5 @@ body {
     font-weight: 500;
     font-family: inherit;
     color: #0f0f0f;
+    line-break: anywhere;
 }

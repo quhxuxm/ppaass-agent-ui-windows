@@ -221,34 +221,35 @@ pub fn ppaass_agent_ui() -> Html {
                     let backend_event: BackendEvent<AgentServerSignal> =
                         event.into_serde().unwrap();
                     let agent_server_signal = backend_event.payload;
-                    let new_ui_state = UiState {
-                        initialized: true,
-                        user_token: ui_state.user_token.clone(),
-                        proxy_address: ui_state.proxy_address.clone(),
-                        listening_port: ui_state.listening_port.clone(),
-                        status_detail: StatusDetail {
-                            text: agent_server_signal.message.clone(),
-                            level: match agent_server_signal.level {
-                                AgentServerSignalLevel::Info => StatusLevel::Info,
-                                AgentServerSignalLevel::Error => StatusLevel::Error,
+                    if let AgentServerSignalLevel::Error = agent_server_signal.level {
+                        let new_ui_state = UiState {
+                            initialized: true,
+                            user_token: ui_state.user_token.clone(),
+                            proxy_address: ui_state.proxy_address.clone(),
+                            listening_port: ui_state.listening_port.clone(),
+                            status_detail: StatusDetail {
+                                text: agent_server_signal.message.clone(),
+                                level: StatusLevel::Error,
                             },
-                        },
-                    };
-                    ui_state.set(new_ui_state);
+                        };
+                        ui_state.set(new_ui_state);
+                    }
+
                     let logging_information_textarea = logging_information_textarea
                         .cast::<HtmlTextAreaElement>()
                         .unwrap();
                     let origianl_logging_text_value = logging_information_textarea.value();
-                    let all_original_logging_lines =
-                        origianl_logging_text_value.lines().collect::<Vec<&str>>();
-                    let mut start_index = all_original_logging_lines.len() as isize - 100;
+                    let all_original_logging_lines = origianl_logging_text_value
+                        .split("\n\n")
+                        .collect::<Vec<&str>>();
+                    let mut start_index = all_original_logging_lines.len() as isize - 1000;
                     if start_index < 0 {
                         start_index = 0;
                     }
                     let all_original_logging_lines =
                         &all_original_logging_lines[start_index as usize..];
-                    let mut logging_text_value = all_original_logging_lines.join("\n");
-                    logging_text_value.push('\n');
+                    let mut logging_text_value = all_original_logging_lines.join("\n\n");
+                    logging_text_value.push_str("\n\n");
                     logging_text_value.push_str(&agent_server_signal.message);
                     logging_information_textarea.set_value(&logging_text_value);
                     let scroll_height = logging_information_textarea.scroll_height();
