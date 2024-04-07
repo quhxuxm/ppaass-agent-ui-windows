@@ -84,6 +84,7 @@ body {
     width: 390px;
     display: flex;
     flex-direction: column;
+    margin-top: 10px;
 }
 
 .right_panel label {

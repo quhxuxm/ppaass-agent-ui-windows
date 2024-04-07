@@ -35,8 +35,6 @@ enum StatusLevel {
     #[display(fmt = "info")]
     #[default]
     Info,
-    #[display(fmt = "warning")]
-    Warning,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
@@ -335,7 +333,7 @@ pub fn ppaass_agent_ui() -> Html {
     html! {
         <>
             <Global css={global_style} />
-            <Container classes="left_panel">
+            <div class="left_panel">
                 <Container classes="input_field_panel">
                     <InputField id="user_token" label={"User token:"}
                     place_holder={"Enter user token"}
@@ -359,11 +357,14 @@ pub fn ppaass_agent_ui() -> Html {
                 <Container classes="status_panel">
                     <span class={status_detail.level.to_string()}>{&*status_detail.text}</span>
                 </Container>
-            </Container>
+            </div>
+
             <Container classes="right_panel">
                 <label for="logging_textarea">{"Logging information "}</label>
                 <textarea id="logging_textarea" ref={logging_information_textarea} readonly={true}></textarea>
             </Container>
+
+
         </>
     }
 }
