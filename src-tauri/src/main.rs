@@ -223,6 +223,38 @@ fn start_vpn(
                         )
                         .unwrap();
                 }
+                AgentServerSignal::ClientConnectionTransportCreateProxyConnectionFail {
+                    client_socket_address,
+                    message,
+                    ..
+                } => {
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: Some(client_socket_address),
+                                level: AgentServerSignalUiPayloadLevel::Error,
+                                message,
+                            },
+                        )
+                        .unwrap();
+                }
+                AgentServerSignal::ClientConnectionTransportCreateProxyConnectionSuccess {
+                    client_socket_address,
+                    message,
+                    ..
+                } => {
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: Some(client_socket_address),
+                                level: AgentServerSignalUiPayloadLevel::Info,
+                                message,
+                            },
+                        )
+                        .unwrap();
+                }
             }
         }
     });
