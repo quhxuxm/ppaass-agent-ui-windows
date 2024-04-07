@@ -13,11 +13,11 @@ use web_sys::{HtmlButtonElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 use crate::{
-    backend::{payload::AgentServerSignal, BackendEvent},
+    bo::{payload::AgentServerSignal, BackendEvent},
     components::container::Container,
 };
 use crate::{
-    backend::{
+    bo::{
         payload::{AgentConfigInfo, AgentServerSignalLevel},
         FrontendArgument,
     },

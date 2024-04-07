@@ -1,5 +1,5 @@
 mod app;
-mod backend;
+mod bo;
 pub mod components;
 mod wasm_binding;
 
