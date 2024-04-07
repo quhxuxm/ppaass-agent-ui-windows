@@ -13,15 +13,15 @@ use web_sys::{HtmlButtonElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 use crate::{
-    backend::{
-        argument::UiArgument,
-        payload::{AgentConfigInfo, AgentServerSignalLevel},
-    },
-    components::input_field::{InputField, InputFieldDataType},
+    backend::{payload::AgentServerSignal, BackendEvent},
+    components::container::Container,
 };
 use crate::{
-    backend::{event::BackendEvent, payload::AgentServerSignal},
-    components::container::Container,
+    backend::{
+        payload::{AgentConfigInfo, AgentServerSignalLevel},
+        FrontendArgument,
+    },
+    components::input_field::{InputField, InputFieldDataType},
 };
 use crate::{
     components::button::Button,
@@ -70,7 +70,7 @@ fn generate_start_btn_callback(
             proxy_address: proxy_address_input_field.value(),
             listening_port: listening_port_field.value(),
         };
-        let ui_arg = UiArgument {
+        let ui_arg = FrontendArgument {
             arg: config_info.clone(),
         };
         let ui_state = ui_state.clone();
