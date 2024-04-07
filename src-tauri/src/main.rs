@@ -62,12 +62,12 @@ fn load_ui_info(state: State<'_, AgentUiState>) -> AgentConfigInfo {
 
 #[tauri::command(rename_all = "snake_case")]
 fn start_vpn(
-    config_info: AgentConfigInfo,
+    arg: AgentConfigInfo,
     state: State<'_, AgentUiState>,
     window: Window,
 ) -> Result<(), PpaassAgentUiError> {
-    println!("Receive agent ui info: {:?}", config_info);
-    let config_info_for_emit = config_info.clone();
+    println!("Receive agent ui info: {:?}", arg);
+    let config_info = arg.clone();
     let proxy_addresses = config_info
         .proxy_address
         .split(';')
@@ -80,7 +80,7 @@ fn start_vpn(
         ))
     })?;
     let mut current_server_config = AgentConfig::parse();
-    current_server_config.set_user_token(config_info.user_token);
+    current_server_config.set_user_token(config_info.user_token.clone());
     current_server_config.set_proxy_addresses(proxy_addresses);
     current_server_config.set_port(listening_port);
     let agent_server = AgentServer::new(current_server_config).map_err(|e| {
@@ -90,7 +90,7 @@ fn start_vpn(
     let (agent_server_guard, mut agent_server_signal_rx) = agent_server.start();
     let mut agent_server_guard_lock = state.agent_server_guard.lock().unwrap();
     *agent_server_guard_lock = Some(agent_server_guard);
-    window.emit("vpnstart", config_info_for_emit).unwrap();
+    window.emit("vpnstart", config_info).unwrap();
 
     tauri::async_runtime::spawn(async move {
         while let Some(agent_server_signal) = agent_server_signal_rx.recv().await {

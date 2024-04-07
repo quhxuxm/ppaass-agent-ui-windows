@@ -1,9 +1,8 @@
-use std::sync::Arc;
-use std::{net::SocketAddr, rc::Rc};
+use std::rc::Rc;
 
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
-use serde::{Deserialize, Serialize};
+
 use serde_wasm_bindgen::to_value;
 use stylist::yew::Global;
 use stylist::StyleSource;
@@ -13,65 +12,21 @@ use web_sys::HtmlInputElement;
 use web_sys::{HtmlButtonElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
-use crate::components::button::Button;
-use crate::components::container::Container;
-use crate::components::input_field::{InputField, InputFieldDataType};
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"])]
-    async fn listen(event_type: &str, callback: &Closure<dyn FnMut(JsValue)>) -> JsValue;
-
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
-    async fn invoke_with_arg(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
-
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
-    async fn invoke_without_arg(cmd: &str) -> Result<JsValue, JsValue>;
-
-    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
-    async fn load_ui_info(cmd: &str) -> Result<JsValue, JsValue>;
-}
-
-#[derive(Serialize, Deserialize)]
-struct UiArg {
-    #[serde(rename = "config_info")]
-    config_info: AgentConfigInfo,
-}
-
-#[derive(Serialize, Deserialize)]
-struct EventPayload {
-    #[serde(rename = "payload")]
-    payload: AgentConfigInfo,
-}
-
-#[derive(Serialize, Deserialize)]
-struct SignalPayload {
-    #[serde(rename = "payload")]
-    payload: AgentServerSignalPayloadContent,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AgentServerSignalLevel {
-    Info,
-    Error,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AgentServerSignalPayloadContent {
-    #[serde(rename = "client_socket_address")]
-    client_socket_address: Option<SocketAddr>,
-    #[serde(rename = "message")]
-    message: String,
-    #[serde(rename = "level")]
-    level: AgentServerSignalLevel,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-struct AgentConfigInfo {
-    user_token: String,
-    proxy_address: String,
-    listening_port: String,
-}
+use crate::{
+    backend::{
+        argument::UiArgument,
+        payload::{AgentConfigInfo, AgentServerSignalLevel},
+    },
+    components::input_field::{InputField, InputFieldDataType},
+};
+use crate::{
+    backend::{event::BackendEvent, payload::AgentServerSignal},
+    components::container::Container,
+};
+use crate::{
+    components::button::Button,
+    wasm_binding::{invoke_tauri_with_arg, invoke_tauri_without_arg, listen_tauri_event},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Default, Display)]
 enum StatusLevel {
@@ -115,13 +70,13 @@ fn generate_start_btn_callback(
             proxy_address: proxy_address_input_field.value(),
             listening_port: listening_port_field.value(),
         };
-        let ui_arg = UiArg {
-            config_info: config_info.clone(),
+        let ui_arg = UiArgument {
+            arg: config_info.clone(),
         };
         let ui_state = ui_state.clone();
         spawn_local(async move {
             let args = to_value(&ui_arg).unwrap();
-            if (invoke_with_arg("start_vpn", args).await).is_err() {
+            if (invoke_tauri_with_arg("start_vpn", args).await).is_err() {
                 let new_ui_state = UiState {
                     initialized: true,
                     user_token: config_info.user_token,
@@ -141,7 +96,7 @@ fn generate_start_btn_callback(
 fn generate_stop_btn_callback() -> Callback<MouseEvent> {
     Callback::from(move |_| {
         spawn_local(async move {
-            invoke_without_arg("stop_vpn").await.unwrap();
+            invoke_tauri_without_arg("stop_vpn").await.unwrap();
         });
     })
 }
@@ -177,8 +132,8 @@ pub fn ppaass_agent_ui() -> Html {
                 let ui_state = ui_state.clone();
 
                 Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-                    let event_payload: EventPayload = event.into_serde().unwrap();
-                    let config_info = event_payload.payload;
+                    let backend_event: BackendEvent<AgentConfigInfo> = event.into_serde().unwrap();
+                    let config_info = backend_event.payload;
                     gloo::console::info!(
                         "Receive vpn start window event from backend:",
                         format!("{:?}", config_info.clone())
@@ -263,16 +218,17 @@ pub fn ppaass_agent_ui() -> Html {
             let agent_signal_listener = {
                 let ui_state = ui_state.clone();
                 Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-                    let signal_payload: SignalPayload = event.into_serde().unwrap();
-                    let agent_server_payload_content = signal_payload.payload;
+                    let backend_event: BackendEvent<AgentServerSignal> =
+                        event.into_serde().unwrap();
+                    let agent_server_signal = backend_event.payload;
                     let new_ui_state = UiState {
                         initialized: true,
                         user_token: ui_state.user_token.clone(),
                         proxy_address: ui_state.proxy_address.clone(),
                         listening_port: ui_state.listening_port.clone(),
                         status_detail: StatusDetail {
-                            text: agent_server_payload_content.message.clone(),
-                            level: match agent_server_payload_content.level {
+                            text: agent_server_signal.message.clone(),
+                            level: match agent_server_signal.level {
                                 AgentServerSignalLevel::Info => StatusLevel::Info,
                                 AgentServerSignalLevel::Error => StatusLevel::Error,
                             },
@@ -293,7 +249,7 @@ pub fn ppaass_agent_ui() -> Html {
                         &all_original_logging_lines[start_index as usize..];
                     let mut logging_text_value = all_original_logging_lines.join("\n");
                     logging_text_value.push('\n');
-                    logging_text_value.push_str(&agent_server_payload_content.message);
+                    logging_text_value.push_str(&agent_server_signal.message);
                     logging_information_textarea.set_value(&logging_text_value);
                     let scroll_height = logging_information_textarea.scroll_height();
                     logging_information_textarea.set_scroll_top(scroll_height);
@@ -308,9 +264,9 @@ pub fn ppaass_agent_ui() -> Html {
                 let vpn_stop_window_listener = vpn_stop_window_listener.clone();
                 let agent_signal_listener = agent_signal_listener.clone();
                 spawn_local(async move {
-                    let _ = listen("vpnstart", &vpn_start_window_listener).await;
-                    let _ = listen("vpnstop", &vpn_stop_window_listener).await;
-                    let _ = listen("vpnsignal", &agent_signal_listener).await;
+                    let _ = listen_tauri_event("vpnstart", &vpn_start_window_listener).await;
+                    let _ = listen_tauri_event("vpnstop", &vpn_stop_window_listener).await;
+                    let _ = listen_tauri_event("vpnsignal", &agent_signal_listener).await;
                 });
             }
 
@@ -328,7 +284,7 @@ pub fn ppaass_agent_ui() -> Html {
     if !ui_state.initialized {
         let ui_state = ui_state.clone();
         spawn_local(async move {
-            let config_info = match load_ui_info("load_ui_info").await {
+            let config_info = match invoke_tauri_without_arg("load_ui_info").await {
                 Ok(config_info) => config_info,
                 Err(_) => {
                     let new_ui_state = UiState {

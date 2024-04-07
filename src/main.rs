@@ -1,5 +1,7 @@
 mod app;
+mod backend;
 pub mod components;
+mod wasm_binding;
 
 use app::PpaassAgentUi;
 
