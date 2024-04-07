@@ -379,7 +379,6 @@ pub fn ppaass_agent_ui() -> Html {
         <>
             <Global css={global_style} />
             <Container classes="left_panel">
-                <h1>{"Ppaass Agent"}</h1>
                 <Container classes="input_field_panel">
                     <InputField id="user_token" label={"User token:"}
                     place_holder={"Enter user token"}

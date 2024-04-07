@@ -12,7 +12,7 @@ use tauri::{
     CustomMenuItem, Manager, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
     SystemTrayMenuItem, Window, WindowEvent,
 };
-use tokio::task::JoinHandle;
+
 use tracing::error;
 
 use crate::error::PpaassAgentUiError;
@@ -48,7 +48,6 @@ pub struct AgentServerSignalUiPayload {
     message: String,
     #[serde(rename = "level")]
     level: AgentServerSignalUiPayloadLevel,
-
 }
 
 pub struct AgentUiState {
@@ -97,53 +96,100 @@ fn start_vpn(
         while let Some(agent_server_signal) = agent_server_signal_rx.recv().await {
             match agent_server_signal {
                 AgentServerSignal::FailToListen(message) => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: None,
-                        level: AgentServerSignalUiPayloadLevel::Error,
-                        message,
-                    }).unwrap();
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: None,
+                                level: AgentServerSignalUiPayloadLevel::Error,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
                 AgentServerSignal::SuccessToListen(message) => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: None,
-                        level: AgentServerSignalUiPayloadLevel::Info,
-                        message,
-                    }).unwrap();
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: None,
+                                level: AgentServerSignalUiPayloadLevel::Info,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
-                AgentServerSignal::ClientConnectionAcceptSuccess { client_socket_address, message } => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: Some(client_socket_address),
-                        level: AgentServerSignalUiPayloadLevel::Info,
-                        message,
-                    }).unwrap();
+                AgentServerSignal::ClientConnectionAcceptSuccess {
+                    client_socket_address,
+                    message,
+                } => {
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: Some(client_socket_address),
+                                level: AgentServerSignalUiPayloadLevel::Info,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
                 AgentServerSignal::ClientConnectionAcceptFail(message) => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: None,
-                        level: AgentServerSignalUiPayloadLevel::Error,
-                        message,
-                    }).unwrap();
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: None,
+                                level: AgentServerSignalUiPayloadLevel::Error,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
-                AgentServerSignal::ClientConnectionBeforeRelayFail { client_socket_address, message } => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: Some(client_socket_address),
-                        level: AgentServerSignalUiPayloadLevel::Error,
-                        message,
-                    }).unwrap();
+                AgentServerSignal::ClientConnectionBeforeRelayFail {
+                    client_socket_address,
+                    message,
+                } => {
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: Some(client_socket_address),
+                                level: AgentServerSignalUiPayloadLevel::Error,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
-                AgentServerSignal::ClientConnectionReadProxyConnectionWriteClose { client_socket_address, message } => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: Some(client_socket_address),
-                        level: AgentServerSignalUiPayloadLevel::Info,
-                        message,
-                    }).unwrap();
+                AgentServerSignal::ClientConnectionReadProxyConnectionWriteClose {
+                    client_socket_address,
+                    message,
+                } => {
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: Some(client_socket_address),
+                                level: AgentServerSignalUiPayloadLevel::Info,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
-                AgentServerSignal::ClientConnectionWriteProxyConnectionReadClose { client_socket_address, message } => {
-                    window.emit("vpnsignal", AgentServerSignalUiPayload {
-                        client_socket_address: Some(client_socket_address),
-                        level: AgentServerSignalUiPayloadLevel::Info,
-                        message,
-                    }).unwrap();
+                AgentServerSignal::ClientConnectionWriteProxyConnectionReadClose {
+                    client_socket_address,
+                    message,
+                } => {
+                    window
+                        .emit(
+                            "vpnsignal",
+                            AgentServerSignalUiPayload {
+                                client_socket_address: Some(client_socket_address),
+                                level: AgentServerSignalUiPayloadLevel::Info,
+                                message,
+                            },
+                        )
+                        .unwrap();
                 }
             }
         }
@@ -159,7 +205,6 @@ fn stop_vpn(state: State<'_, AgentUiState>, window: Window) -> Result<(), Ppaass
     window.emit("vpnstop", ()).unwrap();
     Ok(())
 }
-
 
 fn main() {
     let current_server_config = AgentConfig::parse();
