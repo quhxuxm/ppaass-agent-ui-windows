@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use clap::Parser;
 use ppaass_agent::config::AgentConfig;
 use ppaass_agent::server::{AgentServer, AgentServerGuard};
-use ppaass_ui_common::payload::AgentConfigInfo;
+use ppaass_ui_common::{event::AgentEvent, payload::AgentConfigInfo};
 
 use tauri::{
     CustomMenuItem, Manager, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
@@ -65,7 +65,9 @@ fn start_vpn(
     let (agent_server_guard, mut agent_server_signal_rx) = agent_server.start();
     let mut agent_server_guard_lock = state.agent_server_guard.lock().unwrap();
     *agent_server_guard_lock = Some(agent_server_guard);
-    window.emit("vpnstart", config_info).unwrap();
+    window
+        .emit(AgentEvent::Start.to_string().as_str(), config_info)
+        .unwrap();
 
     tauri::async_runtime::spawn(async move {
         while let Some(agent_server_signal) = agent_server_signal_rx.recv().await {
@@ -80,7 +82,9 @@ fn stop_vpn(state: State<'_, AgentUiState>, window: Window) -> Result<(), Ppaass
     println!("Going to stop vpn");
     let mut agent_server_guard = state.agent_server_guard.lock().unwrap();
     let _ = agent_server_guard.take();
-    window.emit("vpnstop", ()).unwrap();
+    window
+        .emit(AgentEvent::Stop.to_string().as_str(), ())
+        .unwrap();
     Ok(())
 }
 
