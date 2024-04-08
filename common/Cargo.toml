@@ -1,0 +1,13 @@
+[package]
+name = "ppaass-agent-ui-windows-common-lib"
+version = "0.0.0"
+description = "Ppaass Agent Ui - Common library"
+authors = ["Qu Hao"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+derive_more="0.99.17"
+serde="1.0.197"

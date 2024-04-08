@@ -16,7 +16,7 @@ pub enum AgentServerSignalLevel {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AgentServerSignal {
+pub struct AgentServerSignalPayload {
     #[serde(rename = "client_socket_address")]
     pub client_socket_address: Option<SocketAddr>,
     #[serde(rename = "message")]

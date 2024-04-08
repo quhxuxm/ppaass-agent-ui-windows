@@ -3,6 +3,10 @@ use std::rc::Rc;
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
 
+use ppaass_ui_common::{
+    event::AgentEvent,
+    payload::{AgentConfigInfo, AgentServerSignalLevel, AgentServerSignalPayload},
+};
 use serde_wasm_bindgen::to_value;
 use stylist::yew::Global;
 use stylist::StyleSource;
@@ -13,15 +17,12 @@ use web_sys::{HtmlButtonElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 use crate::{
-    bo::{payload::AgentServerSignal, BackendEvent},
-    components::container::Container,
+    bo::BackendCommandArgumentWrapper,
+    components::input_field::{InputField, InputFieldDataType},
 };
 use crate::{
-    bo::{
-        payload::{AgentConfigInfo, AgentServerSignalLevel},
-        FrontendArgument,
-    },
-    components::input_field::{InputField, InputFieldDataType},
+    bo::{command::BackendCommand, BackendEventWrapper},
+    components::container::Container,
 };
 use crate::{
     components::button::Button,
@@ -68,13 +69,15 @@ fn generate_start_btn_callback(
             proxy_address: proxy_address_input_field.value(),
             listening_port: listening_port_field.value(),
         };
-        let ui_arg = FrontendArgument {
+        let ui_arg = BackendCommandArgumentWrapper {
             arg: config_info.clone(),
         };
         let ui_state = ui_state.clone();
         spawn_local(async move {
             let args = to_value(&ui_arg).unwrap();
-            if (invoke_tauri_with_arg("start_vpn", args).await).is_err() {
+            if (invoke_tauri_with_arg(BackendCommand::AgentStart.to_string().as_str(), args).await)
+                .is_err()
+            {
                 let new_ui_state = UiState {
                     initialized: true,
                     user_token: config_info.user_token,
@@ -94,7 +97,9 @@ fn generate_start_btn_callback(
 fn generate_stop_btn_callback() -> Callback<MouseEvent> {
     Callback::from(move |_| {
         spawn_local(async move {
-            invoke_tauri_without_arg("stop_vpn").await.unwrap();
+            invoke_tauri_without_arg(BackendCommand::AgentStop.to_string().as_str())
+                .await
+                .unwrap();
         });
     })
 }
@@ -130,7 +135,8 @@ pub fn ppaass_agent_ui() -> Html {
                 let ui_state = ui_state.clone();
 
                 Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-                    let backend_event: BackendEvent<AgentConfigInfo> = event.into_serde().unwrap();
+                    let backend_event: BackendEventWrapper<AgentConfigInfo> =
+                        event.into_serde().unwrap();
                     let config_info = backend_event.payload;
                     gloo::console::info!(
                         "Receive vpn start window event from backend:",
@@ -216,7 +222,7 @@ pub fn ppaass_agent_ui() -> Html {
             let agent_signal_listener = {
                 let ui_state = ui_state.clone();
                 Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-                    let backend_event: BackendEvent<AgentServerSignal> =
+                    let backend_event: BackendEventWrapper<AgentServerSignalPayload> =
                         event.into_serde().unwrap();
                     let agent_server_signal = backend_event.payload;
                     if let AgentServerSignalLevel::Error = agent_server_signal.level {
@@ -263,9 +269,21 @@ pub fn ppaass_agent_ui() -> Html {
                 let vpn_stop_window_listener = vpn_stop_window_listener.clone();
                 let agent_signal_listener = agent_signal_listener.clone();
                 spawn_local(async move {
-                    let _ = listen_tauri_event("vpnstart", &vpn_start_window_listener).await;
-                    let _ = listen_tauri_event("vpnstop", &vpn_stop_window_listener).await;
-                    let _ = listen_tauri_event("vpnsignal", &agent_signal_listener).await;
+                    let _ = listen_tauri_event(
+                        AgentEvent::Start.to_string().as_str(),
+                        &vpn_start_window_listener,
+                    )
+                    .await;
+                    let _ = listen_tauri_event(
+                        AgentEvent::Stop.to_string().as_str(),
+                        &vpn_stop_window_listener,
+                    )
+                    .await;
+                    let _ = listen_tauri_event(
+                        AgentEvent::Signal.to_string().as_str(),
+                        &agent_signal_listener,
+                    )
+                    .await;
                 });
             }
 
@@ -283,23 +301,26 @@ pub fn ppaass_agent_ui() -> Html {
     if !ui_state.initialized {
         let ui_state = ui_state.clone();
         spawn_local(async move {
-            let config_info = match invoke_tauri_without_arg("load_ui_info").await {
-                Ok(config_info) => config_info,
-                Err(_) => {
-                    let new_ui_state = UiState {
-                        initialized: true,
-                        user_token: "".to_string(),
-                        proxy_address: "".to_string(),
-                        listening_port: "".to_string(),
-                        status_detail: StatusDetail {
-                            text: "Agent fail to initialize.".to_string(),
-                            level: StatusLevel::Info,
-                        },
-                    };
-                    ui_state.set(new_ui_state);
-                    return;
-                }
-            };
+            let config_info =
+                match invoke_tauri_without_arg(BackendCommand::LoadConfigInfo.to_string().as_str())
+                    .await
+                {
+                    Ok(config_info) => config_info,
+                    Err(_) => {
+                        let new_ui_state = UiState {
+                            initialized: true,
+                            user_token: "".to_string(),
+                            proxy_address: "".to_string(),
+                            listening_port: "".to_string(),
+                            status_detail: StatusDetail {
+                                text: "Agent fail to initialize.".to_string(),
+                                level: StatusLevel::Info,
+                            },
+                        };
+                        ui_state.set(new_ui_state);
+                        return;
+                    }
+                };
 
             let config_info: AgentConfigInfo = config_info.into_serde().unwrap();
             gloo::console::info!("Load config info:", format!("{config_info:?}"));

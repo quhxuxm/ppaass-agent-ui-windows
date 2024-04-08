@@ -1,14 +1,14 @@
-pub mod payload;
+pub mod command;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct FrontendArgument<T> {
+pub struct BackendCommandArgumentWrapper<T> {
     pub arg: T,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct BackendEvent<T> {
+pub struct BackendEventWrapper<T> {
     #[serde(rename = "payload")]
     pub payload: T,
 }
