@@ -3,6 +3,7 @@
         ".\\Cargo.toml",
         ".\\common\\Cargo.toml",
         ".\\common\\Cargo.toml",
-        ".\\common\\Cargo.toml"
+        ".\\common\\Cargo.toml",
+        ".\\Cargo.toml"
     ]
 }

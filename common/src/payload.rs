@@ -14,10 +14,10 @@ pub enum AgentServerSignalType {
     Info,
     Error,
     NetworkInfo {
-        upload_bytes_amount: u32,
-        upload_mb_per_second: f32,
-        download_bytes_amount: u32,
-        download_mb_per_second: f32,
+        upload_bytes_amount: u64,
+        upload_mb_per_second: f64,
+        download_bytes_amount: u64,
+        download_mb_per_second: f64,
     },
 }
 

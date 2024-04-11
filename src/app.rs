@@ -46,10 +46,10 @@ struct StatusDetail {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 struct NetworkDetail {
-    upload_bytes_amount: u32,
-    upload_mb_per_second: f32,
-    download_bytes_amount: u32,
-    download_mb_per_second: f32,
+    upload_bytes_amount: u64,
+    upload_mb_per_second: f64,
+    download_bytes_amount: u64,
+    download_mb_per_second: f64,
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
