@@ -395,12 +395,12 @@ pub fn ppaass_agent_ui() -> Html {
     let proxy_address = ui_state.proxy_address.clone();
     let listening_port = ui_state.listening_port.clone();
     let upload_network_info = format!(
-        "Upload amount: {:.2} MB; Upload speed: {:.2} MB/S",
+        "↑ Total: {:.2} MB; Avg {:.2} MB/S",
         ui_state.network_detail.upload_bytes_amount as f32 / (1024 * 1024) as f32,
         ui_state.network_detail.upload_mb_per_second
     );
     let download_network_info = format!(
-        "Download amount: {:.2} MB; Download speed: {:.2} MB/S",
+        "↓ Total: {:.2} MB; Avg: {:.2} MB/S",
         ui_state.network_detail.download_bytes_amount as f32 / (1024 * 1024) as f32,
         ui_state.network_detail.download_mb_per_second
     );
@@ -417,8 +417,8 @@ pub fn ppaass_agent_ui() -> Html {
                     hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={proxy_address}/>
                     <InputField id="listening_port" label={"Listening port:"}
                     place_holder={"Enter listening port"}
-                    data_type={InputFieldDataType::Number{min: 0, max: 65535}}
-                    hint={"Listening port should between 0~65536"} input_ref={&listening_port_field_ref} value={listening_port}/>
+                    data_type={InputFieldDataType::Number{min: 1025, max: 65535}}
+                    hint={"Listening port should between 1025~65536"} input_ref={&listening_port_field_ref} value={listening_port}/>
                 </Container>
                 <Container classes="button_panel">
                     <Button id="register_button" label="Register" classes="button"
