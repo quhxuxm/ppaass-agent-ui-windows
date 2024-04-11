@@ -2,11 +2,6 @@ use std::rc::Rc;
 
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
-
-use ppaass_ui_common::{
-    event::AgentEvent,
-    payload::{AgentConfigInfo, AgentServerSignalLevel, AgentServerSignalPayload},
-};
 use serde_wasm_bindgen::to_value;
 use stylist::yew::Global;
 use stylist::StyleSource;
@@ -15,6 +10,11 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlInputElement;
 use web_sys::{HtmlButtonElement, HtmlTextAreaElement};
 use yew::prelude::*;
+
+use ppaass_ui_common::{
+    event::AgentEvent,
+    payload::{AgentConfigInfo, AgentServerSignalPayload, AgentServerSignalType},
+};
 
 use crate::{
     bo::BackendCommandArgumentWrapper,
@@ -44,13 +44,22 @@ struct StatusDetail {
     level: StatusLevel,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone, Default)]
+struct NetworkDetail {
+    upload_bytes_amount: u32,
+    upload_mb_per_second: f32,
+    download_bytes_amount: u32,
+    download_mb_per_second: f32,
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
 struct UiState {
     initialized: bool,
     user_token: String,
     proxy_address: String,
     listening_port: String,
     status_detail: StatusDetail,
+    network_detail: NetworkDetail,
 }
 
 fn generate_start_btn_callback(
@@ -87,6 +96,7 @@ fn generate_start_btn_callback(
                         text: "VPN fail to start.".to_string(),
                         level: StatusLevel::Error,
                     },
+                    network_detail: Default::default(),
                 };
                 ui_state.set(new_ui_state);
             }
@@ -142,8 +152,9 @@ pub fn ppaass_agent_ui() -> Html {
                         "Receive vpn start window event from backend:",
                         format!("{:?}", config_info.clone())
                     );
-                    let user_token_input_field =
+                    let user_token_input_field: HtmlInputElement =
                         user_token_field_ref.cast::<HtmlInputElement>().unwrap();
+
                     let proxy_address_input_field =
                         proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
                     let listening_port_field =
@@ -162,6 +173,7 @@ pub fn ppaass_agent_ui() -> Html {
                             ),
                             level: StatusLevel::Info,
                         },
+                        network_detail: Default::default(),
                     };
                     proxy_address_input_field.set_disabled(true);
                     user_token_input_field.set_disabled(true);
@@ -206,6 +218,7 @@ pub fn ppaass_agent_ui() -> Html {
                             text: "VPN stopped.".to_string(),
                             level: StatusLevel::Info,
                         },
+                        network_detail: Default::default(),
                     };
                     gloo::console::info!(
                         "Receive vpn stop window event from backend and going to reset ui state:",
@@ -225,18 +238,44 @@ pub fn ppaass_agent_ui() -> Html {
                     let backend_event: BackendEventWrapper<AgentServerSignalPayload> =
                         event.into_serde().unwrap();
                     let agent_server_signal = backend_event.payload;
-                    if let AgentServerSignalLevel::Error = agent_server_signal.level {
+                    if let AgentServerSignalType::NetworkInfo {
+                        upload_bytes_amount,
+                        upload_mb_per_second,
+                        download_bytes_amount,
+                        download_mb_per_second,
+                    } = agent_server_signal.signal_type
+                    {
                         let new_ui_state = UiState {
                             initialized: true,
                             user_token: ui_state.user_token.clone(),
                             proxy_address: ui_state.proxy_address.clone(),
                             listening_port: ui_state.listening_port.clone(),
-                            status_detail: StatusDetail {
-                                text: agent_server_signal.message.clone(),
-                                level: StatusLevel::Error,
+                            status_detail: ui_state.status_detail.clone(),
+                            network_detail: NetworkDetail {
+                                upload_bytes_amount,
+                                upload_mb_per_second,
+                                download_bytes_amount,
+                                download_mb_per_second,
                             },
                         };
                         ui_state.set(new_ui_state);
+                        return;
+                    }
+                    if let AgentServerSignalType::Error = agent_server_signal.signal_type {
+                        if let Some(message) = &agent_server_signal.message {
+                            let new_ui_state = UiState {
+                                initialized: true,
+                                user_token: ui_state.user_token.clone(),
+                                proxy_address: ui_state.proxy_address.clone(),
+                                listening_port: ui_state.listening_port.clone(),
+                                status_detail: StatusDetail {
+                                    text: message.to_string(),
+                                    level: StatusLevel::Error,
+                                },
+                                network_detail: ui_state.network_detail.clone(),
+                            };
+                            ui_state.set(new_ui_state);
+                        }
                     }
 
                     let logging_information_textarea = logging_information_textarea
@@ -254,7 +293,10 @@ pub fn ppaass_agent_ui() -> Html {
                         &all_original_logging_lines[start_index as usize..];
                     let mut logging_text_value = all_original_logging_lines.join("\n\n");
                     logging_text_value.push_str("\n\n");
-                    logging_text_value.push_str(&agent_server_signal.message);
+                    if let Some(message) = &agent_server_signal.message {
+                        logging_text_value.push_str(message);
+                    }
+
                     logging_information_textarea.set_value(&logging_text_value);
                     let scroll_height = logging_information_textarea.scroll_height();
                     logging_information_textarea.set_scroll_top(scroll_height);
@@ -316,6 +358,7 @@ pub fn ppaass_agent_ui() -> Html {
                                 text: "Agent fail to initialize.".to_string(),
                                 level: StatusLevel::Info,
                             },
+                            network_detail: Default::default(),
                         };
                         ui_state.set(new_ui_state);
                         return;
@@ -333,6 +376,7 @@ pub fn ppaass_agent_ui() -> Html {
                     text: "Agent initialize.".to_string(),
                     level: StatusLevel::Info,
                 },
+                network_detail: Default::default(),
             };
             gloo::console::info!("Generate new ui state:", format!("{new_ui_state:?}"));
             ui_state.set(new_ui_state);
@@ -350,7 +394,16 @@ pub fn ppaass_agent_ui() -> Html {
     let user_token = ui_state.user_token.clone();
     let proxy_address = ui_state.proxy_address.clone();
     let listening_port = ui_state.listening_port.clone();
-
+    let upload_network_info = format!(
+        "Upload amount: {:.2} MB; Upload speed: {:.2} MB/S",
+        ui_state.network_detail.upload_bytes_amount as f32 / (1024 * 1024) as f32,
+        ui_state.network_detail.upload_mb_per_second
+    );
+    let download_network_info = format!(
+        "Download amount: {:.2} MB; Download speed: {:.2} MB/S",
+        ui_state.network_detail.download_bytes_amount as f32 / (1024 * 1024) as f32,
+        ui_state.network_detail.download_mb_per_second
+    );
     html! {
         <>
             <Global css={global_style} />
@@ -375,9 +428,16 @@ pub fn ppaass_agent_ui() -> Html {
                     <Button id="stop_button" label="Stop" classes="button"
                     on_click={generate_stop_btn_callback()} />
                 </Container>
-                <Container classes="status_panel">
-                    <span class={status_detail.level.to_string()}>{&*status_detail.text}</span>
+                <Container classes="network_panel">
+                    <span class="upload">{upload_network_info} </span>
+                    <span class="download">{download_network_info} </span>
                 </Container>
+                <Container classes="status_panel">
+                    <span class={["log".to_string(), status_detail.level.to_string()]}>
+                        {&*status_detail.text}
+                    </span>
+                </Container>
+
             </div>
 
             <Container classes="right_panel">

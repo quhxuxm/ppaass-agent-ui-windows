@@ -49,35 +49,56 @@ body {
     justify-content: end;
 }
 
-.status_panel {
-    padding: 10px;
-    height: 35px;
+.network_panel {
+    padding: 5px;
     margin-left: 10px;
     margin-right: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #333333;
+    color: #333333;
+    font-size: 0.7em;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+}
+
+.status_panel {
+    padding: 5px;
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     border: 1px solid #333333;
     color: #aaaaaa;
-    font-size: 0.8em;
+    font-size: 0.7em;
     font-weight: bold;
+    display: flex;
+    flex-direction: column;
 }
 
 .status_panel span {
-    height: 100%;
-    width: 100%;
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow: hidden;
 }
 
-.status_panel span.info {
+.status_panel span.log.info {
     color: blue;
 }
 
-.status_panel span.error {
+.status_panel span.log.error {
     color: red;
 }
 
-.status_panel span.warning {
+.status_panel span.log.warning {
     color: orange;
+}
+
+.status_panel span.network{
+    color: #555555;
 }
 
 .right_panel {
