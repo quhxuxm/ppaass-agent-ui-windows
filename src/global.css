@@ -103,18 +103,51 @@ body {
 
 .right_panel {
     width: 390px;
+    display: flex; 
+    flex-direction: column;
+}
+
+.right_panel .network_status {
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     margin-top: 10px;
 }
 
-.right_panel label {
+.right_panel .network_status label{
     margin: 10px;
     flex-grow: 1;
     font-weight: bold;
 }
 
-.right_panel textarea {
+.right_panel .network_status .network_status_chart{
+    margin: 5px;
+    flex-grow: 40;
+    border: 1px solid #555555;
+    outline: none;
+    box-shadow: none;
+    resize: none;
+    padding: 10px;
+    font-size: 0.7em;
+    font-weight: 500;
+    font-family: inherit;
+    color: #0f0f0f;
+    line-break: anywhere;
+}
+
+.right_panel .logging {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+.right_panel .logging label {
+    margin: 10px;
+    flex-grow: 1;
+    font-weight: bold;
+}
+
+.right_panel .logging textarea {
     margin: 5px;
     flex-grow: 40;
     border: 1px solid #555555;

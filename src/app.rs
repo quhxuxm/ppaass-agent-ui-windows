@@ -396,12 +396,12 @@ pub fn ppaass_agent_ui() -> Html {
     let listening_port = ui_state.listening_port.clone();
     let upload_network_info = format!(
         "↑ Total: {:.2} MB; Avg {:.2} MB/S",
-        ui_state.network_detail.upload_bytes_amount as f32 / (1024 * 1024) as f32,
+        ui_state.network_detail.upload_bytes_amount as f64 / (1024 * 1024) as f64,
         ui_state.network_detail.upload_mb_per_second
     );
     let download_network_info = format!(
         "↓ Total: {:.2} MB; Avg: {:.2} MB/S",
-        ui_state.network_detail.download_bytes_amount as f32 / (1024 * 1024) as f32,
+        ui_state.network_detail.download_bytes_amount as f64 / (1024 * 1024) as f64,
         ui_state.network_detail.download_mb_per_second
     );
     html! {
@@ -440,12 +440,16 @@ pub fn ppaass_agent_ui() -> Html {
 
             </div>
 
-            <Container classes="right_panel">
-                <label for="logging_textarea">{"Logging information "}</label>
-                <textarea id="logging_textarea" ref={logging_information_textarea} readonly={true}></textarea>
-            </Container>
-
-
+            <div class="right_panel">
+                <Container classes="network_status">
+                    <label>{"Network status"}</label>
+                    <div class="network_status_chart"></div>
+                </Container>
+                <Container classes="logging">
+                    <label for="logging_textarea">{"Logging information"}</label>
+                    <textarea id="logging_textarea" ref={logging_information_textarea} readonly={true}></textarea>
+                </Container>
+            </div>
         </>
     }
 }
