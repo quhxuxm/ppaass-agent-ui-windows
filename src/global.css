@@ -86,15 +86,15 @@ body {
 }
 
 .status_panel span.log.info {
-    color: blue;
+    color: #78c096;
 }
 
 .status_panel span.log.error {
-    color: red;
+    color: #ed6464;
 }
 
 .status_panel span.log.warning {
-    color: orange;
+    color: #eddd64;
 }
 
 .status_panel span.network{
@@ -118,21 +118,6 @@ body {
     margin: 10px;
     flex-grow: 1;
     font-weight: bold;
-}
-
-.right_panel .network_status .network_status_chart{
-    margin: 5px;
-    flex-grow: 40;
-    border: 1px solid #555555;
-    outline: none;
-    box-shadow: none;
-    resize: none;
-    padding: 10px;
-    font-size: 0.7em;
-    font-weight: 500;
-    font-family: inherit;
-    color: #0f0f0f;
-    line-break: anywhere;
 }
 
 .right_panel .logging {

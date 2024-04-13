@@ -1,20 +1,27 @@
-:root {
-    font-size: 1.1em;
+& {
+    font-size: 1em;
     margin: 10px;
     padding: 10px;
     font-weight: bold;
-    border-radius: 3;
+    border-radius: 8px;
+    cursor: pointer;
     outline: none;
     box-shadow: none;
     border: 1px solid #333333;
     min-width: 100px;
-}
-:root:hover{
-    border: 1px solid #333333;
-    background-color: #eeeeee;
+    box-shadow: none;
+    transition: border-color 0.25s;
+    background-color: #ffffff;
+    line-height: 1em;
 }
 
-:root:disabled{
-    color: #cccccc;
+&:hover {
+    color: #fafafa;
+    background-color: #78c096;
+}
+
+&:disabled{
+    color: #87ab95;
+    background-color: #eeeeee;
 }
 

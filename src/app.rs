@@ -26,6 +26,7 @@ use crate::{
 };
 use crate::{
     components::button::Button,
+    components::network_info::NetworkInfo,
     wasm_binding::{invoke_tauri_with_arg, invoke_tauri_without_arg, listen_tauri_event},
 };
 
@@ -443,7 +444,7 @@ pub fn ppaass_agent_ui() -> Html {
             <div class="right_panel">
                 <Container classes="network_status">
                     <label>{"Network status"}</label>
-                    <div class="network_status_chart"></div>
+                    <NetworkInfo></NetworkInfo>
                 </Container>
                 <Container classes="logging">
                     <label for="logging_textarea">{"Logging information"}</label>
