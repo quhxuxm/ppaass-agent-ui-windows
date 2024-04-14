@@ -108,7 +108,7 @@ body {
 }
 
 .right_panel .network_status {
-    flex-grow: 1;
+    /* flex-grow: 1; */
     display: flex;
     flex-direction: column;
     margin-top: 10px;
@@ -133,7 +133,7 @@ body {
 }
 
 .right_panel .logging textarea {
-    margin: 5px;
+    /* margin: 5px; */
     flex-grow: 40;
     border: 1px solid #555555;
     outline: none;
