@@ -20,7 +20,8 @@ use crate::components::network_info::{
 
 #[derive(Properties, PartialEq)]
 pub struct NetworkInfoProps {
-    pub content_data: VecDeque<f64>,
+    pub download_content_data: VecDeque<f64>,
+    pub upload_content_data: VecDeque<f64>,
 }
 
 #[styled_component(NetworkInfo)]
@@ -29,7 +30,8 @@ pub fn network_info(props: &NetworkInfoProps) -> Html {
     let style = StyleSource::try_from(include_str!("network_info.css")).unwrap();
     {
         let chart_target = chart_target.clone();
-        let content_data = props.content_data.clone();
+        let download_content_data = props.download_content_data.clone();
+        let upload_content_data = props.upload_content_data.clone();
         use_effect(move || {
             let chart_div = chart_target.cast::<HtmlDivElement>().unwrap();
             let global_init_option = EchartGlobalInitOption {
@@ -63,11 +65,18 @@ pub fn network_info(props: &NetworkInfoProps) -> Html {
                         overflow: Some("break".to_string()),
                     },
                 },
-                series: vec![EchartOptionSeriesElement {
-                    name: None,
-                    chart_type: "line".to_string(),
-                    data: content_data,
-                }],
+                series: vec![
+                    EchartOptionSeriesElement {
+                        name: None,
+                        chart_type: "line".to_string(),
+                        data: download_content_data,
+                    },
+                    EchartOptionSeriesElement {
+                        name: None,
+                        chart_type: "line".to_string(),
+                        data: upload_content_data,
+                    },
+                ],
             };
             let option = JsValue::from_serde(&option).unwrap();
             echarts_instance.setOption(option, true, false);
