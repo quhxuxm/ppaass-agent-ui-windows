@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
@@ -33,10 +35,31 @@ pub struct EchartOptionXAxis {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct EchartOptionAxisLabel {
+    pub show: bool,
+    pub formatter: String,
+    #[serde(rename = "fontSize")]
+    pub font_size: u32,
+    #[serde(rename = "showMinLabel")]
+    pub show_min_label: bool,
+    #[serde(rename = "showMaxLabel")]
+    pub show_max_label: bool,
+    #[serde(rename = "alignMaxLabel")]
+    pub align_max_label: String,
+    pub margin: Option<u32>,
+    pub align: Option<String>,
+    pub inside: bool,
+    pub overflow: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct EchartOptionYAxis {
     pub data: Option<Vec<String>>,
     pub show: bool,
-    pub interval: f64,
+    pub interval: Option<f64>,
+    #[serde(rename = "axisLabel")]
+    pub axis_label: EchartOptionAxisLabel,
+    pub offset: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -44,5 +67,5 @@ pub struct EchartOptionSeriesElement {
     pub name: Option<String>,
     #[serde(rename = "type")]
     pub chart_type: String,
-    pub data: Vec<u32>,
+    pub data: VecDeque<f64>,
 }

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::VecDeque, rc::Rc};
 
 use derive_more::Display;
 use gloo::utils::format::JsValueSerdeExt;
@@ -128,6 +128,7 @@ pub fn ppaass_agent_ui() -> Html {
     let start_button_ref = use_node_ref();
     let logging_information_textarea = use_node_ref();
     let ui_state = use_state(UiState::default);
+    let network_info_content_data = use_state(VecDeque::<f64>::new);
 
     {
         let user_token_field_ref = user_token_field_ref.clone();
@@ -136,6 +137,7 @@ pub fn ppaass_agent_ui() -> Html {
         let start_button_ref = start_button_ref.clone();
         let ui_state = ui_state.clone();
         let logging_information_textarea = logging_information_textarea.clone();
+        let network_info_content_data = network_info_content_data.clone();
         use_effect(move || {
             //Do the logic when component initialize
             let vpn_start_window_listener = {
@@ -235,6 +237,7 @@ pub fn ppaass_agent_ui() -> Html {
 
             let agent_signal_listener = {
                 let ui_state = ui_state.clone();
+                let network_info_content_data = network_info_content_data.clone();
                 Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
                     let backend_event: BackendEventWrapper<AgentServerSignalPayload> =
                         event.into_serde().unwrap();
@@ -260,6 +263,13 @@ pub fn ppaass_agent_ui() -> Html {
                             },
                         };
                         ui_state.set(new_ui_state);
+                        let mut current_netowrk_info_content_data =
+                            (*network_info_content_data).clone();
+                        current_netowrk_info_content_data.push_back(download_mb_per_second);
+                        if current_netowrk_info_content_data.len() > 30 {
+                            current_netowrk_info_content_data.pop_front();
+                        }
+                        network_info_content_data.set(current_netowrk_info_content_data);
                         return;
                     }
                     if let AgentServerSignalType::Error = agent_server_signal.signal_type {
@@ -444,7 +454,7 @@ pub fn ppaass_agent_ui() -> Html {
             <div class="right_panel">
                 <Container classes="network_status">
                     <label>{"Network status"}</label>
-                    <NetworkInfo></NetworkInfo>
+                    <NetworkInfo content_data={(*network_info_content_data).clone()}></NetworkInfo>
                 </Container>
                 <Container classes="logging">
                     <label for="logging_textarea">{"Logging information"}</label>
