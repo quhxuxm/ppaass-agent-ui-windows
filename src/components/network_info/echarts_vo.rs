@@ -2,11 +2,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct EchartGlobalInitOption {
-    pub devicePixelRatio: Option<f64>,
+    #[serde(rename = "devicePixelRatio")]
+    pub device_pixel_ratio: Option<f64>,
     pub renderer: Option<String>,
-    pub useDirtyRect: Option<bool>,
-    pub useCoarsePointer: Option<bool>,
-    pub pointerSize: Option<u32>,
+    #[serde(rename = "useDirtyRect")]
+    pub use_dirty_rect: Option<bool>,
+    #[serde(rename = "useCoarsePointer")]
+    pub use_coarse_pointer: Option<bool>,
+    #[serde(rename = "pointerSize")]
+    pub pointer_size: Option<u32>,
     pub ssr: Option<bool>,
     pub width: Option<String>,
     pub height: Option<String>,
