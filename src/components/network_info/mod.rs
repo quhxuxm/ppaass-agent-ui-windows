@@ -20,8 +20,8 @@ use crate::components::network_info::{
 
 #[derive(Properties, PartialEq)]
 pub struct NetworkInfoProps {
-    pub download_content_data: VecDeque<f64>,
-    pub upload_content_data: VecDeque<f64>,
+    pub download_content_data: VecDeque<String>,
+    pub upload_content_data: VecDeque<String>,
 }
 
 #[styled_component(NetworkInfo)]

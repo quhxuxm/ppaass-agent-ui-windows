@@ -128,8 +128,8 @@ pub fn ppaass_agent_ui() -> Html {
     let start_button_ref = use_node_ref();
     let logging_information_textarea = use_node_ref();
     let ui_state = use_state(UiState::default);
-    let network_info_download_content_data = use_state(VecDeque::<f64>::new);
-    let network_info_upload_content_data = use_state(VecDeque::<f64>::new);
+    let network_info_download_content_data = use_state(VecDeque::<String>::new);
+    let network_info_upload_content_data = use_state(VecDeque::<String>::new);
 
     {
         let user_token_field_ref = user_token_field_ref.clone();
@@ -269,7 +269,7 @@ pub fn ppaass_agent_ui() -> Html {
                         let mut current_network_info_download_content_data =
                             (*network_info_download_content_data).clone();
                         current_network_info_download_content_data
-                            .push_back(download_mb_per_second);
+                            .push_back(format!("{download_mb_per_second:.2}"));
                         if current_network_info_download_content_data.len() > 30 {
                             current_network_info_download_content_data.pop_front();
                         }
@@ -278,7 +278,8 @@ pub fn ppaass_agent_ui() -> Html {
 
                         let mut current_network_info_upload_content_data =
                             (*network_info_upload_content_data).clone();
-                        current_network_info_upload_content_data.push_back(upload_mb_per_second);
+                        current_network_info_upload_content_data
+                            .push_back(format!("{upload_mb_per_second:.2}"));
                         if current_network_info_upload_content_data.len() > 30 {
                             current_network_info_upload_content_data.pop_front();
                         }

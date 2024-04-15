@@ -1,7 +1,10 @@
 #![allow(unused)]
 use std::collections::VecDeque;
 
+use gloo::utils::format::JsValueSerdeExt;
+use js_sys::Function;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::JsValue;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct EchartGlobalInitOption {
@@ -74,7 +77,7 @@ pub struct EchartOptionSeriesElement {
     pub name: Option<String>,
     #[serde(rename = "type")]
     pub chart_type: String,
-    pub data: VecDeque<f64>,
+    pub data: VecDeque<String>,
     #[serde(rename = "areaStyle")]
     pub area_style: Option<EchartOptionSeriesElementAreaStyle>,
 }
