@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,12 @@ pub struct EchartOption {
     #[serde(rename = "yAxis")]
     pub y_axis: EchartOptionYAxis,
     pub series: Vec<EchartOptionSeriesElement>,
+    pub tooltip: Option<EchartOptionTooltip>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct EchartOptionTooltip {
+    pub show: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -68,4 +75,21 @@ pub struct EchartOptionSeriesElement {
     #[serde(rename = "type")]
     pub chart_type: String,
     pub data: VecDeque<f64>,
+    #[serde(rename = "areaStyle")]
+    pub area_style: Option<EchartOptionSeriesElementAreaStyle>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct EchartOptionSeriesElementAreaStyle {
+    pub color: Option<String>,
+    pub origin: Option<String>,
+    #[serde(rename = "shadowBlur")]
+    pub shadow_blur: Option<u32>,
+    #[serde(rename = "shadowColor")]
+    pub shadow_color: Option<String>,
+    #[serde(rename = "shadowOffsetX")]
+    pub shadow_offset_x: Option<u32>,
+    #[serde(rename = "shadowOffsetY")]
+    pub shadow_offset_y: Option<u32>,
+    pub opacity: Option<f64>,
 }

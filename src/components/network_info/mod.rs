@@ -43,6 +43,7 @@ pub fn network_info(props: &NetworkInfoProps) -> Html {
             let echarts_instance =
                 ECHARTS_GLOBAL.init(chart_div, "light".to_string(), global_init_option);
             let option = EchartOption {
+                tooltip: None,
                 x_axis: EchartOptionXAxis {
                     data: Some(vec![]),
                     show: true,
@@ -67,14 +68,16 @@ pub fn network_info(props: &NetworkInfoProps) -> Html {
                 },
                 series: vec![
                     EchartOptionSeriesElement {
-                        name: None,
+                        name: Some("Download speed".to_string()),
                         chart_type: "line".to_string(),
                         data: download_content_data,
+                        area_style: Some(Default::default()),
                     },
                     EchartOptionSeriesElement {
-                        name: None,
+                        name: Some("Upload speed".to_string()),
                         chart_type: "line".to_string(),
                         data: upload_content_data,
+                        area_style: Some(Default::default()),
                     },
                 ],
             };
