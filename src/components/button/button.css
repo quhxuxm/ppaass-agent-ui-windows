@@ -16,12 +16,12 @@
 }
 
 &:hover {
-    color: #fafafa;
-    background-color: #78c096;
+    color: #333333;
+    background-color: #eeeeee;
 }
 
 &:disabled{
-    color: #87ab95;
+    color: #999999;
     background-color: #eeeeee;
 }
 
