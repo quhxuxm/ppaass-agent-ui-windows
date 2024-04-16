@@ -27,4 +27,8 @@ extern "C" {
     pub type ECharts;
     #[wasm_bindgen(method, js_name = "setOption")]
     pub fn setOption(this: &ECharts, option: JsValue, not_merge: bool, lazy_update: bool);
+
+    #[wasm_bindgen(method, js_name = "dispose")]
+    pub fn dispose(this: &ECharts);
+
 }

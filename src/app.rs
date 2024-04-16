@@ -421,12 +421,12 @@ pub fn ppaass_agent_ui() -> Html {
     let proxy_address = ui_state.proxy_address.clone();
     let listening_port = ui_state.listening_port.clone();
     let upload_network_info = format!(
-        "↑ Total: {:.2} MB; Avg {:.2} MB/S",
+        "↑↑↑ Total: {:.2} MB; Avg {:.2} MB/S",
         ui_state.network_detail.upload_bytes_amount as f64 / (1024 * 1024) as f64,
         ui_state.network_detail.upload_mb_per_second
     );
     let download_network_info = format!(
-        "↓ Total: {:.2} MB; Avg: {:.2} MB/S",
+        "↓↓↓ Total: {:.2} MB; Avg: {:.2} MB/S",
         ui_state.network_detail.download_bytes_amount as f64 / (1024 * 1024) as f64,
         ui_state.network_detail.download_mb_per_second
     );
