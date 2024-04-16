@@ -24,6 +24,7 @@
     border: 1px solid #555555;
     outline: none;
     box-shadow: none;
+    border-radius: 5px;
 }
 
 :root input:disabled {
