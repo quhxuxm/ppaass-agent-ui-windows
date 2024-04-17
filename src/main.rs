@@ -1,5 +1,6 @@
 mod app;
 mod bo;
+mod callbacks;
 pub mod components;
 mod wasm_binding;
 

@@ -1,5 +1,5 @@
 pub mod command;
-
+pub mod ui_state;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
