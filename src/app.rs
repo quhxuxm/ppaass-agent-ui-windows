@@ -193,6 +193,7 @@ pub fn ppaass_agent_ui() -> Html {
                             hint="Register to get user token" input_ref={&user_token_field_ref} value={user_token}/>
                             <InputField id="proxy_address" label={"Proxy address:"}
                             place_holder={"Enter proxy address"}
+                            data_type={InputFieldDataType::Address}
                             hint={"Proxy addresses are seperate with \";\""} input_ref={&proxy_address_field_ref} value={proxy_address}/>
                             <InputField id="listening_port" label={"Listening port:"}
                             place_holder={"Enter listening port"}

@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::net::SocketAddr;
 
 use stylist::{yew::styled_component, StyleSource};
 use web_sys::HtmlInputElement;
@@ -8,6 +8,7 @@ use yew::{classes, html, use_state, Callback, Classes, Html, NodeRef, Properties
 pub enum InputFieldDataType {
     Text,
     Number { min: i128, max: i128 },
+    Address,
 }
 
 #[derive(Properties, PartialEq)]
@@ -45,15 +46,16 @@ pub fn input_field(props: &InputFieldProps) -> Html {
                 None => return,
             };
             let input_value = html_input.value();
-            if let InputFieldDataType::Number { min, max } = data_type {
-                if input_value.is_empty() {
-                    gloo::console::info!("Input empty value");
-                    is_error.set(false);
-                    return;
-                }
-                match input_value.parse::<i128>() {
+            if input_value.is_empty() {
+                gloo::console::info!("Input empty value");
+                is_error.set(false);
+                return;
+            }
+            match data_type {
+                InputFieldDataType::Text => (),
+                InputFieldDataType::Number { min, max } => match input_value.parse::<i128>() {
                     Ok(new_value) => {
-                        gloo::console::info!("Input new value:", new_value);
+                        gloo::console::info!("Input new value (i128):", new_value);
                         if min > new_value || max < new_value {
                             value_state.set(Some(new_value.to_string()));
                             is_error.set(true);
@@ -70,6 +72,26 @@ pub fn input_field(props: &InputFieldProps) -> Html {
                         value_state.set(Some(input_value));
                         is_error.set(true);
                     }
+                },
+                InputFieldDataType::Address => {
+                    match input_value.parse::<SocketAddr>() {
+                        Ok(new_value) => {
+                            gloo::console::info!(
+                                "Input new value (address):",
+                                new_value.to_string()
+                            );
+                            value_state.set(Some(new_value.to_string()));
+                            is_error.set(false);
+                        }
+                        Err(_) => {
+                            gloo::console::info!(
+                                "Input new value but have error on parse to address:",
+                                input_value.clone()
+                            );
+                            value_state.set(Some(input_value));
+                            is_error.set(true);
+                        }
+                    };
                 }
             }
         })
