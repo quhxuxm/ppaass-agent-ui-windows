@@ -25,7 +25,6 @@ pub struct NetworkDetail {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct UiState {
-    pub initialized: bool,
     pub user_token: String,
     pub proxy_address: String,
     pub listening_port: String,

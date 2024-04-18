@@ -21,7 +21,7 @@ pub struct StartBtnCallbackParam {
     pub user_token_input_ref: NodeRef,
     pub proxy_address_field_ref: NodeRef,
     pub listening_port_field_ref: NodeRef,
-    pub ui_state: UseStateHandle<UiState>,
+    pub ui_state: UseStateHandle<Option<UiState>>,
 }
 
 pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<MouseEvent> {
@@ -51,7 +51,6 @@ pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<Mou
                 .is_err()
             {
                 let new_ui_state = UiState {
-                    initialized: true,
                     user_token: config_info.user_token,
                     proxy_address: config_info.proxy_address,
                     listening_port: config_info.listening_port,
@@ -61,7 +60,7 @@ pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<Mou
                     },
                     network_detail: Default::default(),
                 };
-                ui_state.set(new_ui_state);
+                ui_state.set(Some(new_ui_state));
             }
         });
     })
@@ -82,7 +81,7 @@ pub struct AgentServerStartedCallbackParam {
     pub proxy_address_field_ref: NodeRef,
     pub listening_port_field_ref: NodeRef,
     pub start_button_ref: NodeRef,
-    pub ui_state: UseStateHandle<UiState>,
+    pub ui_state: UseStateHandle<Option<UiState>>,
 }
 
 pub fn generate_agent_server_started_callback(
@@ -110,7 +109,6 @@ pub fn generate_agent_server_started_callback(
         let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
 
         let new_ui_state = UiState {
-            initialized: true,
             user_token: config_info.user_token,
             proxy_address: config_info.proxy_address,
             listening_port: config_info.listening_port.clone(),
@@ -131,7 +129,7 @@ pub fn generate_agent_server_started_callback(
             "Receive vpn start window event from backend and going to reset ui with new state:",
             format!("{new_ui_state:?}")
         );
-        ui_state.set(new_ui_state);
+        ui_state.set(Some(new_ui_state));
 
         gloo::console::info!(
             "Receive vpn start window event from backend after reset ui state:",
@@ -145,7 +143,7 @@ pub struct AgentServerStopCallbackParam {
     pub proxy_address_field_ref: NodeRef,
     pub listening_port_field_ref: NodeRef,
     pub start_button_ref: NodeRef,
-    pub ui_state: UseStateHandle<UiState>,
+    pub ui_state: UseStateHandle<Option<UiState>>,
 }
 
 pub fn generate_agent_server_stop_callback(
@@ -158,41 +156,44 @@ pub fn generate_agent_server_stop_callback(
         start_button_ref,
         ui_state,
     } = param;
-    Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        gloo::console::info!("Receive vpn stop window event from backend:", event);
-        let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
-        let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
-        let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
-        let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-        gloo::console::info!(
-            "Receive vpn stop window event from backend and get all fields success"
-        );
-        let new_ui_state = UiState {
-            initialized: true,
-            user_token: ui_state.user_token.clone(),
-            proxy_address: ui_state.proxy_address.clone(),
-            listening_port: ui_state.listening_port.clone(),
-            status_detail: StatusDetail {
-                text: "VPN stopped.".to_string(),
-                level: StatusLevel::Info,
-            },
-            network_detail: Default::default(),
-        };
-        gloo::console::info!(
-            "Receive vpn stop window event from backend and going to reset ui state:",
-            format!("{new_ui_state:?}")
-        );
-        proxy_address_input_field.set_disabled(false);
-        user_token_input_field.set_disabled(false);
-        listening_port_field.set_disabled(false);
-        start_button.set_disabled(false);
-        ui_state.set(new_ui_state);
+    Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| match *ui_state {
+        None => (),
+        Some(ref ui_state_inner) => {
+            gloo::console::info!("Receive vpn stop window event from backend:", event);
+            let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
+            let proxy_address_input_field =
+                proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
+            let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
+            let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+            gloo::console::info!(
+                "Receive vpn stop window event from backend and get all fields success"
+            );
+            let new_ui_state = UiState {
+                user_token: ui_state_inner.user_token.clone(),
+                proxy_address: ui_state_inner.proxy_address.clone(),
+                listening_port: ui_state_inner.listening_port.clone(),
+                status_detail: StatusDetail {
+                    text: "VPN stopped.".to_string(),
+                    level: StatusLevel::Info,
+                },
+                network_detail: Default::default(),
+            };
+            gloo::console::info!(
+                "Receive vpn stop window event from backend and going to reset ui state:",
+                format!("{new_ui_state:?}")
+            );
+            proxy_address_input_field.set_disabled(false);
+            user_token_input_field.set_disabled(false);
+            listening_port_field.set_disabled(false);
+            start_button.set_disabled(false);
+            ui_state.set(Some(new_ui_state));
+        }
     })
 }
 
 pub struct AgentServerSignalCallbackParam {
     pub logging_textarea: NodeRef,
-    pub ui_state: UseStateHandle<UiState>,
+    pub ui_state: UseStateHandle<Option<UiState>>,
     pub network_info_download_content_data: UseStateHandle<VecDeque<String>>,
     pub network_info_upload_content_data: UseStateHandle<VecDeque<String>>,
 }
@@ -207,84 +208,85 @@ pub fn generate_agent_server_signal_callback(
         network_info_download_content_data,
         network_info_upload_content_data,
     } = param;
-    Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        let backend_event: BackendEventWrapper<AgentServerSignalPayload> =
-            event.into_serde().unwrap();
-        let agent_server_signal = backend_event.payload;
-        if let AgentServerSignalType::NetworkInfo {
-            upload_bytes_amount,
-            upload_mb_per_second,
-            download_bytes_amount,
-            download_mb_per_second,
-        } = agent_server_signal.signal_type
-        {
-            let new_ui_state = UiState {
-                initialized: true,
-                user_token: ui_state.user_token.clone(),
-                proxy_address: ui_state.proxy_address.clone(),
-                listening_port: ui_state.listening_port.clone(),
-                status_detail: ui_state.status_detail.clone(),
-                network_detail: NetworkDetail {
-                    upload_bytes_amount,
-                    upload_mb_per_second,
-                    download_bytes_amount,
-                    download_mb_per_second,
-                },
-            };
-            ui_state.set(new_ui_state);
-            let mut current_network_info_download_content_data =
-                (*network_info_download_content_data).clone();
-            current_network_info_download_content_data
-                .push_back(format!("{download_mb_per_second:.2}"));
-            if current_network_info_download_content_data.len() > 30 {
-                current_network_info_download_content_data.pop_front();
-            }
-            network_info_download_content_data.set(current_network_info_download_content_data);
-
-            let mut current_network_info_upload_content_data =
-                (*network_info_upload_content_data).clone();
-            current_network_info_upload_content_data
-                .push_back(format!("{upload_mb_per_second:.2}"));
-            if current_network_info_upload_content_data.len() > 30 {
-                current_network_info_upload_content_data.pop_front();
-            }
-            network_info_upload_content_data.set(current_network_info_upload_content_data);
-            return;
-        }
-        if let AgentServerSignalType::Error = agent_server_signal.signal_type {
-            if let Some(message) = &agent_server_signal.message {
+    Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| match *ui_state {
+        None => (),
+        Some(ref ui_state_inner) => {
+            let backend_event: BackendEventWrapper<AgentServerSignalPayload> =
+                event.into_serde().unwrap();
+            let agent_server_signal = backend_event.payload;
+            if let AgentServerSignalType::NetworkInfo {
+                upload_bytes_amount,
+                upload_mb_per_second,
+                download_bytes_amount,
+                download_mb_per_second,
+            } = agent_server_signal.signal_type
+            {
                 let new_ui_state = UiState {
-                    initialized: true,
-                    user_token: ui_state.user_token.clone(),
-                    proxy_address: ui_state.proxy_address.clone(),
-                    listening_port: ui_state.listening_port.clone(),
-                    status_detail: StatusDetail {
-                        text: message.to_string(),
-                        level: StatusLevel::Error,
+                    user_token: ui_state_inner.user_token.clone(),
+                    proxy_address: ui_state_inner.proxy_address.clone(),
+                    listening_port: ui_state_inner.listening_port.clone(),
+                    status_detail: ui_state_inner.status_detail.clone(),
+                    network_detail: NetworkDetail {
+                        upload_bytes_amount,
+                        upload_mb_per_second,
+                        download_bytes_amount,
+                        download_mb_per_second,
                     },
-                    network_detail: ui_state.network_detail.clone(),
                 };
-                ui_state.set(new_ui_state);
-            }
-        }
+                ui_state.set(Some(new_ui_state));
+                let mut current_network_info_download_content_data =
+                    (*network_info_download_content_data).clone();
+                current_network_info_download_content_data
+                    .push_back(format!("{download_mb_per_second:.2}"));
+                if current_network_info_download_content_data.len() > 30 {
+                    current_network_info_download_content_data.pop_front();
+                }
+                network_info_download_content_data.set(current_network_info_download_content_data);
 
-        let logging_textarea = logging_textarea.cast::<HtmlTextAreaElement>().unwrap();
-        let origianl_logging_text_value = logging_textarea.value();
-        let all_original_logging_lines = origianl_logging_text_value
-            .split("\n\n")
-            .collect::<Vec<&str>>();
-        let mut start_index = all_original_logging_lines.len() as isize - 1000;
-        if start_index < 0 {
-            start_index = 0;
+                let mut current_network_info_upload_content_data =
+                    (*network_info_upload_content_data).clone();
+                current_network_info_upload_content_data
+                    .push_back(format!("{upload_mb_per_second:.2}"));
+                if current_network_info_upload_content_data.len() > 30 {
+                    current_network_info_upload_content_data.pop_front();
+                }
+                network_info_upload_content_data.set(current_network_info_upload_content_data);
+                return;
+            }
+            if let AgentServerSignalType::Error = agent_server_signal.signal_type {
+                if let Some(message) = &agent_server_signal.message {
+                    let new_ui_state = UiState {
+                        user_token: ui_state_inner.user_token.clone(),
+                        proxy_address: ui_state_inner.proxy_address.clone(),
+                        listening_port: ui_state_inner.listening_port.clone(),
+                        status_detail: StatusDetail {
+                            text: message.to_string(),
+                            level: StatusLevel::Error,
+                        },
+                        network_detail: ui_state_inner.network_detail.clone(),
+                    };
+                    ui_state.set(Some(new_ui_state));
+                }
+            }
+
+            let logging_textarea = logging_textarea.cast::<HtmlTextAreaElement>().unwrap();
+            let origianl_logging_text_value = logging_textarea.value();
+            let all_original_logging_lines = origianl_logging_text_value
+                .split("\n\n")
+                .collect::<Vec<&str>>();
+            let mut start_index = all_original_logging_lines.len() as isize - 1000;
+            if start_index < 0 {
+                start_index = 0;
+            }
+            let all_original_logging_lines = &all_original_logging_lines[start_index as usize..];
+            let mut logging_text_value = all_original_logging_lines.join("\n\n");
+            logging_text_value.push_str("\n\n");
+            if let Some(message) = &agent_server_signal.message {
+                logging_text_value.push_str(message);
+            }
+            logging_textarea.set_value(&logging_text_value);
+            let scroll_height = logging_textarea.scroll_height();
+            logging_textarea.set_scroll_top(scroll_height);
         }
-        let all_original_logging_lines = &all_original_logging_lines[start_index as usize..];
-        let mut logging_text_value = all_original_logging_lines.join("\n\n");
-        logging_text_value.push_str("\n\n");
-        if let Some(message) = &agent_server_signal.message {
-            logging_text_value.push_str(message);
-        }
-        logging_textarea.set_value(&logging_text_value);
-        let scroll_height = logging_textarea.scroll_height();
-        logging_textarea.set_scroll_top(scroll_height);
     })
 }
