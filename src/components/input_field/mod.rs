@@ -48,6 +48,7 @@ pub fn input_field(props: &InputFieldProps) -> Html {
             let input_value = html_input.value();
             if input_value.is_empty() {
                 gloo::console::info!("Input empty value");
+                value_state.set(None);
                 is_error.set(false);
                 return;
             }
@@ -108,7 +109,7 @@ pub fn input_field(props: &InputFieldProps) -> Html {
                 class={classes!(is_error.then_some("error"))}
                 placeholder={props.place_holder.clone()}
                 value={(*value_state).clone()}
-                onchange={on_change_callback}
+                oninput={on_change_callback}
             />
             if let Some(hint) = &props.hint{
                 <span class={classes!("hint", is_error.then_some("error"))}>{hint}</span>
