@@ -1,5 +1,5 @@
-use stylist::{StyleSource, yew::styled_component};
-use yew::{Callback, Classes, html, Html, NodeRef, Properties};
+use stylist::StyleSource;
+use yew::{function_component, html, Callback, Classes, Html, NodeRef, Properties};
 
 #[derive(Properties, PartialEq)]
 pub struct ButtonProps {
@@ -14,7 +14,7 @@ pub struct ButtonProps {
     pub button_ref: NodeRef,
 }
 
-#[styled_component(Button)]
+#[function_component(Button)]
 pub fn button(props: &ButtonProps) -> Html {
     let style = StyleSource::try_from(include_str!("button.css")).unwrap();
     html! {

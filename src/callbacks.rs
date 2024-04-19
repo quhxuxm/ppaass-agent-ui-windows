@@ -203,7 +203,6 @@ pub fn generate_agent_server_signal_callback(
 ) -> Closure<dyn FnMut(JsValue)> {
     let AgentServerSignalCallbackParam {
         logging_textarea,
-
         ui_state,
         network_info_download_content_data,
         network_info_upload_content_data,

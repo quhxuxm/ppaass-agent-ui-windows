@@ -1,8 +1,10 @@
 use std::net::SocketAddr;
 
-use stylist::{yew::styled_component, StyleSource};
+use stylist::StyleSource;
 use web_sys::HtmlInputElement;
-use yew::{classes, html, use_state, Callback, Classes, Html, NodeRef, Properties};
+use yew::{
+    classes, function_component, html, use_state, Callback, Classes, Html, NodeRef, Properties,
+};
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum InputFieldDataType {
@@ -30,7 +32,7 @@ pub struct InputFieldProps {
     pub data_type: InputFieldDataType,
 }
 
-#[styled_component(InputField)]
+#[function_component(InputField)]
 pub fn input_field(props: &InputFieldProps) -> Html {
     let is_error = use_state(|| false);
     let value_state = use_state(|| props.value.clone());

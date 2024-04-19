@@ -5,10 +5,12 @@ use std::collections::VecDeque;
 
 use gloo::utils::format::JsValueSerdeExt;
 
-use stylist::{yew::styled_component, StyleSource};
+use stylist::StyleSource;
 use wasm_bindgen::JsValue;
 use web_sys::HtmlDivElement;
-use yew::{classes, html, use_effect, use_node_ref, use_state, Html, Properties};
+use yew::{
+    classes, function_component, html, use_effect, use_node_ref, use_state, Html, Properties,
+};
 
 use crate::components::network_info::{
     echarts_binding::{ECharts, ECHARTS_GLOBAL},
@@ -20,11 +22,12 @@ use crate::components::network_info::{
 
 #[derive(Properties, PartialEq)]
 pub struct NetworkInfoProps {
+    // pub network_update_callback: Callback<NetworkUpdateInfo>,
     pub download_content_data: VecDeque<String>,
     pub upload_content_data: VecDeque<String>,
 }
 
-#[styled_component(NetworkInfo)]
+#[function_component(NetworkInfo)]
 pub fn network_info(props: &NetworkInfoProps) -> Html {
     let chart_target = use_node_ref();
     let style = StyleSource::try_from(include_str!("network_info.css")).unwrap();
