@@ -8,7 +8,7 @@ use yew::{classes, html, use_state, Callback, Classes, Html, NodeRef, Properties
 pub enum InputFieldDataType {
     Text,
     Number { min: i128, max: i128 },
-    Address,
+    Addresses,
 }
 
 #[derive(Properties, PartialEq)]
@@ -74,7 +74,7 @@ pub fn input_field(props: &InputFieldProps) -> Html {
                         is_error.set(true);
                     }
                 },
-                InputFieldDataType::Address => {
+                InputFieldDataType::Addresses => {
                     let input_addresses = input_value.split(';').collect::<Vec<&str>>();
                     for input_address in input_addresses {
                         match input_address.parse::<SocketAddr>() {
