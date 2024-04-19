@@ -14,11 +14,13 @@ use ppaass_ui_common::{event::AgentEvent, payload::AgentConfigInfo};
 use crate::{
     bo::ui_state::UiState,
     callbacks::{
-        generate_agent_server_signal_callback, generate_agent_server_started_callback,
-        generate_agent_server_stop_callback, AgentServerSignalCallbackParam,
+        generate_agent_server_started_callback, generate_agent_server_stop_callback,
         AgentServerStartedCallbackParam, AgentServerStopCallbackParam, StartBtnCallbackParam,
     },
-    components::input_field::{InputField, InputFieldDataType},
+    components::{
+        backend_event::BackendEvent,
+        input_field::{InputField, InputFieldDataType},
+    },
 };
 use crate::{
     bo::{
@@ -67,13 +69,6 @@ pub fn ppaass_agent_ui() -> Html {
         ui_state: ui_state.clone(),
     };
 
-    let agent_server_signal_callback_param = AgentServerSignalCallbackParam {
-        ui_state: ui_state.clone(),
-        network_info_download_content_data: network_info_download_content_data.clone(),
-        network_info_upload_content_data: network_info_upload_content_data.clone(),
-        logging_textarea: logging_textarea.clone(),
-    };
-
     {
         let ui_state = ui_state.clone();
         use_effect(move || {
@@ -85,17 +80,11 @@ pub fn ppaass_agent_ui() -> Html {
             let agent_stop_listener =
                 generate_agent_server_stop_callback(agent_server_stop_callback_param);
 
-            let agent_signal_listener =
-                generate_agent_server_signal_callback(agent_server_signal_callback_param);
             listen_tauri_event(
                 AgentEvent::Start.to_string().as_str(),
                 &agent_start_listener,
             );
             listen_tauri_event(AgentEvent::Stop.to_string().as_str(), &agent_stop_listener);
-            listen_tauri_event(
-                AgentEvent::Signal.to_string().as_str(),
-                &agent_signal_listener,
-            );
 
             if ui_state.is_none() {
                 spawn_local(async move {
@@ -138,7 +127,6 @@ pub fn ppaass_agent_ui() -> Html {
                 // When listener dropped the event will not be listened.
                 drop(agent_start_listener);
                 drop(agent_stop_listener);
-                drop(agent_signal_listener);
             }
         });
     }
@@ -169,6 +157,7 @@ pub fn ppaass_agent_ui() -> Html {
             html! {
                 <>
                     <Global css={global_style} />
+                    // <BackendEvent />
                     <div class="left_panel">
                         <Container classes="input_field_panel">
                             <InputField id="user_token" label={"User token:"}
