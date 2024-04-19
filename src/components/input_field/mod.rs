@@ -75,24 +75,27 @@ pub fn input_field(props: &InputFieldProps) -> Html {
                     }
                 },
                 InputFieldDataType::Address => {
-                    match input_value.parse::<SocketAddr>() {
-                        Ok(new_value) => {
-                            gloo::console::info!(
-                                "Input new value (address):",
-                                new_value.to_string()
-                            );
-                            value_state.set(Some(new_value.to_string()));
-                            is_error.set(false);
-                        }
-                        Err(_) => {
-                            gloo::console::info!(
-                                "Input new value but have error on parse to address:",
-                                input_value.clone()
-                            );
-                            value_state.set(Some(input_value));
-                            is_error.set(true);
-                        }
-                    };
+                    let input_addresses = input_value.split(';').collect::<Vec<&str>>();
+                    for input_address in input_addresses {
+                        match input_address.parse::<SocketAddr>() {
+                            Ok(parsed_address) => {
+                                gloo::console::info!(
+                                    "Input new value (address):",
+                                    parsed_address.to_string()
+                                );
+                                value_state.set(Some(input_value.clone()));
+                                is_error.set(false);
+                            }
+                            Err(_) => {
+                                gloo::console::info!(
+                                    "Input new value but have error on parse to address:",
+                                    input_value.clone()
+                                );
+                                value_state.set(Some(input_value.clone()));
+                                is_error.set(true);
+                            }
+                        };
+                    }
                 }
             }
         })
