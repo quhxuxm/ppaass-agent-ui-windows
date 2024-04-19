@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, rc::Rc};
+use std::collections::VecDeque;
 
 use gloo::utils::format::JsValueSerdeExt;
 
@@ -87,32 +87,15 @@ pub fn ppaass_agent_ui() -> Html {
 
             let agent_signal_listener =
                 generate_agent_server_signal_callback(agent_server_signal_callback_param);
-
-            let agent_start_listener = Rc::new(agent_start_listener);
-            let agent_stop_listener = Rc::new(agent_stop_listener);
-            let agent_signal_listener = Rc::new(agent_signal_listener);
-            {
-                let agent_start_listener = agent_start_listener.clone();
-                let agent_stop_listener = agent_stop_listener.clone();
-                let agent_signal_listener = agent_signal_listener.clone();
-                spawn_local(async move {
-                    let _ = listen_tauri_event(
-                        AgentEvent::Start.to_string().as_str(),
-                        &agent_start_listener,
-                    )
-                    .await;
-                    let _ = listen_tauri_event(
-                        AgentEvent::Stop.to_string().as_str(),
-                        &agent_stop_listener,
-                    )
-                    .await;
-                    let _ = listen_tauri_event(
-                        AgentEvent::Signal.to_string().as_str(),
-                        &agent_signal_listener,
-                    )
-                    .await;
-                });
-            }
+            listen_tauri_event(
+                AgentEvent::Start.to_string().as_str(),
+                &agent_start_listener,
+            );
+            listen_tauri_event(AgentEvent::Stop.to_string().as_str(), &agent_stop_listener);
+            listen_tauri_event(
+                AgentEvent::Signal.to_string().as_str(),
+                &agent_signal_listener,
+            );
 
             if ui_state.is_none() {
                 spawn_local(async move {

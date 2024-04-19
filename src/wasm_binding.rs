@@ -4,10 +4,7 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     /// Register a callback listen to the tauri event
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "event"], js_name ="listen")]
-    pub async fn listen_tauri_event(
-        event_type: &str,
-        callback: &Closure<dyn FnMut(JsValue)>,
-    ) -> JsValue;
+    pub fn listen_tauri_event(event_type: &str, callback: &Closure<dyn FnMut(JsValue)>) -> JsValue;
 
     /// Binding to the invoke method to call tauri backend with arguments
     #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "tauri"], js_name = "invoke", catch)]
