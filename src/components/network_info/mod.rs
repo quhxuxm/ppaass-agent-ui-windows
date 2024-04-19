@@ -74,7 +74,7 @@ pub fn network_info(props: &NetworkInfoProps) -> Html {
         match *echarts_instance_state {
             Some(ref echarts_instance) => {
                 let option = JsValue::from_serde(&echarts_instance_option).unwrap();
-                echarts_instance.setOption(option, true, false);
+                echarts_instance.setOption(&option, true, false);
             }
             None => {
                 let echarts_global_init_option = EchartGlobalInitOption {
