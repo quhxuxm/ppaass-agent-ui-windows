@@ -79,31 +79,31 @@ pub fn ppaass_agent_ui() -> Html {
         use_effect(move || {
             //Do the logic when component initialize
 
-            let agent_start_window_listener =
+            let agent_start_listener =
                 generate_agent_server_started_callback(agent_server_started_callback_param);
 
-            let agent_stop_window_listener =
+            let agent_stop_listener =
                 generate_agent_server_stop_callback(agent_server_stop_callback_param);
 
             let agent_signal_listener =
                 generate_agent_server_signal_callback(agent_server_signal_callback_param);
 
-            let agent_start_window_listener = Rc::new(agent_start_window_listener);
-            let agent_stop_window_listener = Rc::new(agent_stop_window_listener);
+            let agent_start_listener = Rc::new(agent_start_listener);
+            let agent_stop_listener = Rc::new(agent_stop_listener);
             let agent_signal_listener = Rc::new(agent_signal_listener);
             {
-                let agent_start_window_listener = agent_start_window_listener.clone();
-                let agent_stop_window_listener = agent_stop_window_listener.clone();
+                let agent_start_listener = agent_start_listener.clone();
+                let agent_stop_listener = agent_stop_listener.clone();
                 let agent_signal_listener = agent_signal_listener.clone();
                 spawn_local(async move {
                     let _ = listen_tauri_event(
                         AgentEvent::Start.to_string().as_str(),
-                        &agent_start_window_listener,
+                        &agent_start_listener,
                     )
                     .await;
                     let _ = listen_tauri_event(
                         AgentEvent::Stop.to_string().as_str(),
-                        &agent_stop_window_listener,
+                        &agent_stop_listener,
                     )
                     .await;
                     let _ = listen_tauri_event(
@@ -153,8 +153,8 @@ pub fn ppaass_agent_ui() -> Html {
                 // Do the logic when component destroy
                 // The listener must drop here otherwise it will cause multiple listener registered.
                 // When listener dropped the event will not be listened.
-                drop(agent_start_window_listener);
-                drop(agent_stop_window_listener);
+                drop(agent_start_listener);
+                drop(agent_stop_listener);
                 drop(agent_signal_listener);
             }
         });
