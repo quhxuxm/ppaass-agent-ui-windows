@@ -1,12 +1,18 @@
-use derive_more::Display;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Debug, Display, Serialize, Deserialize, PartialEq, Eq)]
-pub enum AgentEvent {
-    #[display(fmt = "__BACKEND_AGENT_SERVER_START__")]
-    Start,
-    #[display(fmt = "__BACKEND_AGENT_SERVER_STOP__")]
-    Stop,
-    #[display(fmt = "__BACKEND_AGENT_SERVER_SIGNAL__")]
-    Signal,
+pub static AGENT_SERVER_EVENT: &str = "__AGENT_SERVER_EVENT__";
+
+#[derive(Debug, PartialEq, Serialize, Clone)]
+pub enum AgentServerUiBackendEvent {
+    AgentServerStartSuccess(u16),
+    AgentServerStartFail(String),
+    AgentServerStopSuccess,
+    AgentServerStopFail(String),
+    Logging(String),
+    NetworkState {
+        upload_bytes_amount: u64,
+        upload_mb_per_second: f64,
+        download_bytes_amount: u64,
+        download_mb_per_second: f64,
+    },
 }

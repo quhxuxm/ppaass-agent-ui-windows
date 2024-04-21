@@ -1,46 +1,42 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Mutex;
-
 use clap::Parser;
-use ppaass_agent::config::AgentConfig;
 use ppaass_agent::server::{AgentServer, AgentServerGuard};
-use ppaass_ui_common::{event::AgentEvent, payload::AgentConfigInfo};
+use ppaass_agent::{command::AgentServerCommand, config::AgentServerConfig};
+use ppaass_ui_common::{error::AgentServerUiError, payload::AgentServerConfigInfo};
 
 use tauri::{
     CustomMenuItem, Manager, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
     SystemTrayMenuItem, Window, WindowEvent,
 };
 
+use tokio::sync::Mutex;
 use tracing::error;
 
-use crate::{error::PpaassAgentUiError, signal::dispatch_signal};
-
-mod error;
-mod signal;
+const AGENT_SERVER_EVENT: &str = "__AGENT_SERVER_EVENT__";
 
 const SYSTEM_TRAY_MENU_ITEM_START_AGENT: &str = "SYSTEM_TRAY_MENU_ITEM_START_AGENT";
 const SYSTEM_TRAY_MENU_ITEM_STOP_AGENT: &str = "SYSTEM_TRAY_MENU_ITEM_STOP_AGENT";
 const SYSTEM_TRAY_MENU_ITEM_EXIT: &str = "SYSTEM_TRAY_MENU_ITEM_EXIT";
 const MAIN_WINDOW_LABEL: &str = "main";
 
-pub struct AgentUiState {
-    config_info: AgentConfigInfo,
+pub struct AgentFrontendState {
+    config_info: AgentServerConfigInfo,
     agent_server_guard: Mutex<Option<AgentServerGuard>>,
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn load_ui_info(state: State<'_, AgentUiState>) -> AgentConfigInfo {
+fn load_ui_info(state: State<'_, AgentFrontendState>) -> AgentServerConfigInfo {
     state.config_info.clone()
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn start_vpn(
-    arg: AgentConfigInfo,
-    state: State<'_, AgentUiState>,
+fn start_agent_server(
+    arg: AgentServerConfigInfo,
+    state: State<'_, AgentFrontendState>,
     window: Window,
-) -> Result<(), PpaassAgentUiError> {
+) -> Result<(), AgentServerUiError> {
     println!("Receive agent ui info: {:?}", arg);
     let config_info = arg.clone();
     let proxy_addresses = config_info
@@ -48,52 +44,47 @@ fn start_vpn(
         .split(';')
         .map(|item| item.to_string())
         .collect::<Vec<String>>();
-    let listening_port = config_info.listening_port.parse::<u16>().map_err(|e| {
-        tracing::error!("Fail to parse listening port because of error: {e:?}");
-        PpaassAgentUiError::Other(format!(
-            "Fail to parse listening port because of error: {e:?}"
-        ))
-    })?;
-    let mut current_server_config = AgentConfig::parse();
+    let listening_port = config_info.listening_port.parse::<u16>()?;
+    let mut current_server_config = AgentServerConfig::parse();
     current_server_config.set_user_token(config_info.user_token.clone());
     current_server_config.set_proxy_addresses(proxy_addresses);
     current_server_config.set_port(listening_port);
-    let agent_server = AgentServer::new(current_server_config).map_err(|e| {
-        tracing::error!("Fail to start agent server because of error: {e:?}");
-        PpaassAgentUiError::Agent(format!("{e:?}"))
-    })?;
-    let (agent_server_guard, mut agent_server_signal_rx) = agent_server.start();
-    let mut agent_server_guard_lock = state.agent_server_guard.lock().unwrap();
-    *agent_server_guard_lock = Some(agent_server_guard);
-    window
-        .emit(AgentEvent::Start.to_string().as_str(), config_info)
-        .unwrap();
+    let agent_server = AgentServer::new(current_server_config)?;
+    let (agent_server_guard, mut agent_server_event_rx) = agent_server.start();
 
     tauri::async_runtime::spawn(async move {
-        while let Some(agent_server_signal) = agent_server_signal_rx.recv().await {
-            dispatch_signal(agent_server_signal, &window);
+        let agent_server_guard_lock = state.agent_server_guard.lock().await;
+        *agent_server_guard_lock = Some(agent_server_guard);
+        while let Some(agent_server_event) = agent_server_event_rx.recv().await {
+            if let Err(e) = window.emit(AGENT_SERVER_EVENT, agent_server_event) {
+                error!("Fail to emit agent server envent to window because of error: {e:?}")
+            };
         }
     });
     Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn stop_vpn(state: State<'_, AgentUiState>, window: Window) -> Result<(), PpaassAgentUiError> {
-    println!("Going to stop vpn");
-    let mut agent_server_guard = state.agent_server_guard.lock().unwrap();
-    let _ = agent_server_guard.take();
-    window
-        .emit(AgentEvent::Stop.to_string().as_str(), ())
-        .unwrap();
+fn stop_agent_server(state: State<'_, AgentFrontendState>) -> Result<(), AgentServerUiError> {
+    println!("Going to stop agent server");
+    tauri::async_runtime::spawn(async {
+        let agent_server_guard_lock = state.agent_server_guard.lock().await;
+        if let Some(ref agent_server_guard) = *agent_server_guard_lock {
+            agent_server_guard
+                .send_server_command(AgentServerCommand::Stop)
+                .await;
+        }
+    });
+
     Ok(())
 }
 
 fn main() {
-    let current_server_config = AgentConfig::parse();
+    let current_server_config = AgentServerConfig::parse();
     let _log_guard =
         ppaass_agent::log::init_log(&current_server_config).expect("Fail to initialize log");
-    let initial_state = AgentUiState {
-        config_info: AgentConfigInfo {
+    let initial_state = AgentFrontendState {
+        config_info: AgentServerConfigInfo {
             user_token: current_server_config.user_token().to_string(),
             proxy_address: current_server_config.proxy_addresses().clone().join(";"),
             listening_port: current_server_config.port().to_string(),
@@ -123,17 +114,19 @@ fn main() {
                 }
                 SYSTEM_TRAY_MENU_ITEM_STOP_AGENT => {
                     if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
-                        let state = window.state::<AgentUiState>();
-                        if let Err(e) = stop_vpn(state.clone(), window.clone()) {
+                        let state = window.state::<AgentFrontendState>();
+                        if let Err(e) = stop_agent_server(state.clone()) {
                             error!("Fail to stop vpn because of error: {e:?}");
                         }
                     }
                 }
                 SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
                     if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
-                        let state = window.state::<AgentUiState>();
+                        let state = window.state::<AgentFrontendState>();
                         let config_info = state.config_info.clone();
-                        if let Err(e) = start_vpn(config_info, state.clone(), window.clone()) {
+                        if let Err(e) =
+                            start_agent_server(config_info, state.clone(), window.clone())
+                        {
                             error!("Fail to start vpn because of error: {e:?}");
                         };
                     }
@@ -156,7 +149,11 @@ fn main() {
                 };
             };
         })
-        .invoke_handler(tauri::generate_handler![start_vpn, stop_vpn, load_ui_info])
+        .invoke_handler(tauri::generate_handler![
+            start_agent_server,
+            stop_agent_server,
+            load_ui_info
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
 
 use gloo::utils::format::JsValueSerdeExt;
-use ppaass_ui_common::payload::{AgentConfigInfo, AgentServerSignalPayload, AgentServerSignalType};
+use ppaass_ui_common::payload::{
+    AgentServerConfigInfo, AgentServerSignalPayload, AgentServerSignalType,
+};
 
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::{closure::Closure, JsValue};
@@ -36,7 +38,7 @@ pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<Mou
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
 
-        let config_info = AgentConfigInfo {
+        let config_info = AgentServerConfigInfo {
             user_token: user_token_input_field.value(),
             proxy_address: proxy_address_input_field.value(),
             listening_port: listening_port_field.value(),
@@ -95,7 +97,7 @@ pub fn generate_agent_server_started_callback(
         ui_state,
     } = param;
     Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        let backend_event: BackendEventWrapper<AgentConfigInfo> = event.into_serde().unwrap();
+        let backend_event: BackendEventWrapper<AgentServerConfigInfo> = event.into_serde().unwrap();
         let config_info = backend_event.payload;
         gloo::console::info!(
             "Receive vpn start window event from backend:",

@@ -9,5 +9,8 @@ edition = "2021"
 
 
 [dependencies]
-derive_more="0.99.17"
-serde="1.0.197"
+derive_more="0.99"
+serde={version = "1", features = ["derive"]}
+thiserror = "1"
+tauri = "1.6"
+ppaass-agent = "0.1.27"

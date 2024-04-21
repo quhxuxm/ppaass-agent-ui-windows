@@ -9,7 +9,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use yew::prelude::*;
 
-use ppaass_ui_common::{event::AgentEvent, payload::AgentConfigInfo};
+use ppaass_ui_common::{event::AgentEvent, payload::AgentServerConfigInfo};
 
 use crate::{
     bo::ui_state::UiState,
@@ -103,7 +103,7 @@ pub fn ppaass_agent_ui() -> Html {
                         }
                     };
 
-                    let config_info: AgentConfigInfo = config_info.into_serde().unwrap();
+                    let config_info: AgentServerConfigInfo = config_info.into_serde().unwrap();
                     gloo::console::info!("Load config info:", format!("{config_info:?}"));
                     let new_ui_state = UiState {
                         user_token: config_info.user_token,
