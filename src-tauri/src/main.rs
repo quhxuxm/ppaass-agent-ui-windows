@@ -48,21 +48,21 @@ fn load_agent_server_configuration(
 
 #[tauri::command(rename_all = "snake_case")]
 fn start_agent_server(
-    config_ui_bo: AgentServerConfigUiBo,
+    arg: AgentServerConfigUiBo,
     state: State<'_, AgentServerConfigurationUiState>,
     window: Window,
 ) -> Result<()> {
-    info!(
+    println!(
         "Receive agent  server configuration ui business object: {:?}",
-        config_ui_bo
+        arg
     );
     tauri::async_runtime::block_on(async {
-        let proxy_addresses = config_ui_bo
+        let proxy_addresses = arg
             .proxy_address
             .split(';')
             .map(|item| item.to_string())
             .collect::<Vec<String>>();
-        let listening_port = match config_ui_bo.listening_port.parse::<u16>() {
+        let listening_port = match arg.listening_port.parse::<u16>() {
             Ok(listening_port) => listening_port,
             Err(e) => {
                 error!("Fail to parse listening port because of error: {e:?}");
@@ -71,7 +71,7 @@ fn start_agent_server(
         };
         let agent_server_config = {
             let mut agent_server_config_lock = state.agent_server_config.lock().await;
-            agent_server_config_lock.set_user_token(config_ui_bo.user_token);
+            agent_server_config_lock.set_user_token(arg.user_token);
             agent_server_config_lock.set_port(listening_port);
             agent_server_config_lock.set_proxy_addresses(proxy_addresses);
             Arc::new(agent_server_config_lock.clone())
@@ -88,83 +88,85 @@ fn start_agent_server(
             let mut agent_server_command_tx_lock = state.agent_server_command_tx.lock().await;
             *agent_server_command_tx_lock = Some(agent_server_command_tx);
         }
-        while let Some(agent_server_event) = agent_server_event_rx.recv().await {
-            let agent_server_backend_to_ui_event = match agent_server_event {
-                AgentServerEvent::NetworkState {
-                    upload_mb_amount,
-                    upload_mb_per_second,
-                    download_mb_amount,
-                    download_mb_per_second,
-                } => AgentServerBackendToUiEvent::NetworkState {
-                    upload_mb_amount,
-                    upload_mb_per_second,
-                    download_mb_amount,
-                    download_mb_per_second,
-                },
-                AgentServerEvent::ServerStartSuccess(port) => {
-                    AgentServerBackendToUiEvent::StartSuccess(port)
-                }
-                AgentServerEvent::ServerStartFail {
-                    listening_port,
-                    reason,
-                } => AgentServerBackendToUiEvent::StartFail {
-                    listening_port,
-                    reason,
-                },
-                AgentServerEvent::ServerStopSuccess => AgentServerBackendToUiEvent::StopSuccess,
-                AgentServerEvent::ServerStopFail {
-                    listening_port,
-                    reason,
-                } => AgentServerBackendToUiEvent::StopFail {
-                    listening_port,
-                    reason,
-                },
-                AgentServerEvent::TunnelInitializeSuccess {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                } => AgentServerBackendToUiEvent::Logging {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                    reason: None,
-                },
-                AgentServerEvent::TunnelInitializeFail {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                    reason,
-                } => AgentServerBackendToUiEvent::Logging {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                    reason: Some(reason),
-                },
-                AgentServerEvent::TunnelStartRelay {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                } => AgentServerBackendToUiEvent::Logging {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                    reason: None,
-                },
-                AgentServerEvent::TunnelClose {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                } => AgentServerBackendToUiEvent::Logging {
-                    client_socket_address,
-                    src_address,
-                    dst_address,
-                    reason: None,
-                },
-            };
-            if let Err(e) = window.emit(AGENT_SERVER_EVENT, agent_server_backend_to_ui_event) {
-                error!("Fail to emit agent server event to frontend because of error: {e:?}")
-            };
-        }
+        tauri::async_runtime::spawn(async move {
+            while let Some(agent_server_event) = agent_server_event_rx.recv().await {
+                let agent_server_backend_to_ui_event = match agent_server_event {
+                    AgentServerEvent::NetworkState {
+                        upload_mb_amount,
+                        upload_mb_per_second,
+                        download_mb_amount,
+                        download_mb_per_second,
+                    } => AgentServerBackendToUiEvent::NetworkState {
+                        upload_mb_amount,
+                        upload_mb_per_second,
+                        download_mb_amount,
+                        download_mb_per_second,
+                    },
+                    AgentServerEvent::ServerStartSuccess(port) => {
+                        AgentServerBackendToUiEvent::StartSuccess(port)
+                    }
+                    AgentServerEvent::ServerStartFail {
+                        listening_port,
+                        reason,
+                    } => AgentServerBackendToUiEvent::StartFail {
+                        listening_port,
+                        reason,
+                    },
+                    AgentServerEvent::ServerStopSuccess => AgentServerBackendToUiEvent::StopSuccess,
+                    AgentServerEvent::ServerStopFail {
+                        listening_port,
+                        reason,
+                    } => AgentServerBackendToUiEvent::StopFail {
+                        listening_port,
+                        reason,
+                    },
+                    AgentServerEvent::TunnelInitializeSuccess {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                    } => AgentServerBackendToUiEvent::Logging {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                        reason: None,
+                    },
+                    AgentServerEvent::TunnelInitializeFail {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                        reason,
+                    } => AgentServerBackendToUiEvent::Logging {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                        reason: Some(reason),
+                    },
+                    AgentServerEvent::TunnelStartRelay {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                    } => AgentServerBackendToUiEvent::Logging {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                        reason: None,
+                    },
+                    AgentServerEvent::TunnelClose {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                    } => AgentServerBackendToUiEvent::Logging {
+                        client_socket_address,
+                        src_address,
+                        dst_address,
+                        reason: None,
+                    },
+                };
+                if let Err(e) = window.emit(AGENT_SERVER_EVENT, agent_server_backend_to_ui_event) {
+                    error!("Fail to emit agent server event to frontend because of error: {e:?}")
+                };
+            }
+        });
     });
     Ok(())
 }

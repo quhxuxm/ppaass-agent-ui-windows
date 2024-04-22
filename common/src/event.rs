@@ -1,9 +1,9 @@
 use ppaass_protocol::message::values::address::PpaassUnifiedAddress;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub static AGENT_SERVER_EVENT: &str = "__AGENT_SERVER_EVENT__";
 
-#[derive(Debug, PartialEq, Serialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Clone, Deserialize)]
 pub enum AgentServerBackendToUiEvent {
     StartSuccess(u16),
     StartFail {

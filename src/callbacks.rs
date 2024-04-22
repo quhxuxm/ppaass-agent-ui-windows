@@ -1,5 +1,5 @@
 use gloo::utils::format::JsValueSerdeExt;
-use ppaass_ui_common::payload::AgentServerConfigUiBo;
+use ppaass_ui_common::{event::AgentServerBackendToUiEvent, payload::AgentServerConfigUiBo};
 
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::{closure::Closure, JsValue};
@@ -39,31 +39,37 @@ pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<Mou
             proxy_address: proxy_address_input_field.value(),
             listening_port: listening_port_field.value(),
         };
-        let ui_arg = UiBackendCommandArgWrapper {
+        let backend_command_arg_wrapper = UiBackendCommandArgWrapper {
             arg: config_info.clone(),
         };
         let ui_state = ui_state.clone();
         spawn_local(async move {
-            let args = to_value(&ui_arg).unwrap();
-            if (invoke_tauri_with_arg(
+            let backend_command_arg_wrapper_json = to_value(&backend_command_arg_wrapper).unwrap();
+            invoke_tauri_with_arg(
                 UiBackendCommand::StartAgentServer.to_string().as_str(),
-                args,
+                backend_command_arg_wrapper_json,
             )
-            .await)
-                .is_err()
-            {
-                let new_ui_state = UiState {
-                    user_token: config_info.user_token,
-                    proxy_address: config_info.proxy_address,
-                    listening_port: config_info.listening_port,
-                    status_detail: StatusDetail {
-                        text: "VPN fail to start.".to_string(),
-                        level: StatusLevel::Error,
-                    },
-                    network_detail: Default::default(),
-                };
-                ui_state.set(Some(new_ui_state));
-            }
+            .await
+            .unwrap();
+            // if (invoke_tauri_with_arg(
+            //     UiBackendCommand::StartAgentServer.to_string().as_str(),
+            //     backend_command_arg_wrapper_json,
+            // )
+            // .await)
+            //     .is_err()
+            // {
+            //     let new_ui_state = UiState {
+            //         user_token: config_info.user_token,
+            //         proxy_address: config_info.proxy_address,
+            //         listening_port: config_info.listening_port,
+            //         status_detail: StatusDetail {
+            //             text: "VPN fail to start.".to_string(),
+            //             level: StatusLevel::Error,
+            //         },
+            //         network_detail: Default::default(),
+            //     };
+            //     ui_state.set(Some(new_ui_state));
+            // }
         });
     })
 }
@@ -97,19 +103,26 @@ pub fn generate_agent_server_started_callback(
         ui_state,
     } = param;
     Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        let backend_event: UiBackendEventWrapper<AgentServerConfigUiBo> =
+        let backend_to_ui_event_wrapper: UiBackendEventWrapper<AgentServerBackendToUiEvent> =
             event.into_serde().unwrap();
-        let config_info = backend_event.payload;
-        gloo::console::info!(
-            "Receive vpn start window event from backend:",
-            format!("{:?}", config_info.clone())
-        );
+        let backend_to_ui_event = backend_to_ui_event_wrapper.payload;
+
         let user_token_input_field: HtmlInputElement =
             user_token_input_ref.cast::<HtmlInputElement>().unwrap();
 
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
         let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+        if let AgentServerBackendToUiEvent::StartSuccess(port) = backend_to_ui_event {
+            proxy_address_input_field.set_disabled(true);
+            user_token_input_field.set_disabled(true);
+            listening_port_field.set_disabled(true);
+            start_button.set_disabled(true);
+            gloo::console::info!(
+                "Receive vpn start window event from backend and going to reset ui with new state:",
+                format!("{new_ui_state:?}")
+            );
+        }
 
         let new_ui_state = UiState {
             user_token: config_info.user_token,
@@ -124,14 +137,7 @@ pub fn generate_agent_server_started_callback(
             },
             network_detail: Default::default(),
         };
-        proxy_address_input_field.set_disabled(true);
-        user_token_input_field.set_disabled(true);
-        listening_port_field.set_disabled(true);
-        start_button.set_disabled(true);
-        gloo::console::info!(
-            "Receive vpn start window event from backend and going to reset ui with new state:",
-            format!("{new_ui_state:?}")
-        );
+
         ui_state.set(Some(new_ui_state));
 
         gloo::console::info!(

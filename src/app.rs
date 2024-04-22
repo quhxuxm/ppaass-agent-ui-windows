@@ -2,9 +2,6 @@ use std::collections::VecDeque;
 
 use gloo::utils::format::JsValueSerdeExt;
 
-use stylist::yew::Global;
-use stylist::StyleSource;
-
 use wasm_bindgen_futures::spawn_local;
 
 use yew::prelude::*;
@@ -12,7 +9,7 @@ use yew::prelude::*;
 use ppaass_ui_common::{event::AGENT_SERVER_EVENT, payload::AgentServerConfigUiBo};
 
 use crate::{
-    bo::ui_state::UiState,
+    bo::{UiConfigurationForm, UiNetworkDetail, UiStatusBarDetail},
     callbacks::{
         generate_agent_server_started_callback, generate_agent_server_stop_callback,
         AgentServerStartedCallbackParam, AgentServerStopCallbackParam, StartBtnCallbackParam,
@@ -20,10 +17,6 @@ use crate::{
     components::input_field::{InputField, InputFieldDataType},
 };
 use crate::{
-    bo::{
-        command::UiBackendCommand,
-        ui_state::{StatusDetail, StatusLevel},
-    },
     callbacks::{generate_start_btn_callback, generate_stop_btn_callback},
     components::container::Container,
 };
@@ -33,15 +26,17 @@ use crate::{
     wasm_binding::{invoke_tauri_without_arg, listen_tauri_event},
 };
 
-#[function_component(PpaassAgentUi)]
-pub fn ppaass_agent_ui() -> Html {
-    let global_style = StyleSource::try_from(include_str!("global.css")).unwrap();
+#[function_component(AgentServerConfigurationUi)]
+pub fn agent_server_config_ui() -> Html {
     let user_token_field_ref = use_node_ref();
     let proxy_address_field_ref = use_node_ref();
     let listening_port_field_ref = use_node_ref();
     let start_button_ref = use_node_ref();
     let logging_textarea = use_node_ref();
-    let ui_state = use_state(|| Option::<UiState>::None);
+    let ui_configuraiton_form = use_state(|| Option::<UiConfigurationForm>::None);
+    let ui_status_bar_detail = use_state(|| Option::<UiStatusBarDetail>::None);
+    let ui_network_detail = use_state(|| Option::<UiNetworkDetail>::None);
+
     let network_info_download_content_data = use_state(VecDeque::<String>::new);
     let network_info_upload_content_data = use_state(VecDeque::<String>::new);
 
@@ -151,7 +146,6 @@ pub fn ppaass_agent_ui() -> Html {
 
             html! {
                 <>
-                    <Global css={global_style} />
                     <div class="left_panel">
                         <Container classes="input_field_panel">
                             <InputField id="user_token" label={"User token:"}
