@@ -17,9 +17,9 @@ pub struct StatusDetail {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct NetworkDetail {
-    pub upload_bytes_amount: u64,
+    pub upload_mb_amount: u64,
     pub upload_mb_per_second: f64,
-    pub download_bytes_amount: u64,
+    pub download_mb_amount: u64,
     pub download_mb_per_second: f64,
 }
 

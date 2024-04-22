@@ -1,10 +1,10 @@
 use derive_more::Display;
 #[derive(Debug, Display)]
-pub enum BackendCommand {
-    #[display(fmt = "start_vpn")]
-    AgentStart,
-    #[display(fmt = "stop_vpn")]
-    AgentStop,
-    #[display(fmt = "load_ui_info")]
-    LoadConfigInfo,
+pub enum UiBackendCommand {
+    #[display(fmt = "start_agent_server")]
+    StartAgentServer,
+    #[display(fmt = "stop_agent_server")]
+    StopAgentServer,
+    #[display(fmt = "load_agent_server_configuration")]
+    LoadAgentServerConifugration,
 }

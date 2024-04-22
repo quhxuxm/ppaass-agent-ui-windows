@@ -1,20 +1,16 @@
-use std::collections::VecDeque;
-
 use gloo::utils::format::JsValueSerdeExt;
-use ppaass_ui_common::payload::{
-    AgentServerConfigInfo, AgentServerSignalPayload, AgentServerSignalType,
-};
+use ppaass_ui_common::payload::AgentServerConfigUiBo;
 
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::{closure::Closure, JsValue};
-use web_sys::{HtmlButtonElement, HtmlInputElement, HtmlTextAreaElement};
+use web_sys::{HtmlButtonElement, HtmlInputElement};
 use yew::{platform::spawn_local, Callback, MouseEvent, NodeRef, UseStateHandle};
 
 use crate::{
     bo::{
-        command::BackendCommand,
-        ui_state::{NetworkDetail, StatusDetail, StatusLevel, UiState},
-        BackendCommandArgumentWrapper, BackendEventWrapper,
+        command::UiBackendCommand,
+        ui_state::{StatusDetail, StatusLevel, UiState},
+        UiBackendCommandArgWrapper, UiBackendEventWrapper,
     },
     wasm_binding::{invoke_tauri_with_arg, invoke_tauri_without_arg},
 };
@@ -38,18 +34,22 @@ pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<Mou
         let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
         let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
 
-        let config_info = AgentServerConfigInfo {
+        let config_info = AgentServerConfigUiBo {
             user_token: user_token_input_field.value(),
             proxy_address: proxy_address_input_field.value(),
             listening_port: listening_port_field.value(),
         };
-        let ui_arg = BackendCommandArgumentWrapper {
+        let ui_arg = UiBackendCommandArgWrapper {
             arg: config_info.clone(),
         };
         let ui_state = ui_state.clone();
         spawn_local(async move {
             let args = to_value(&ui_arg).unwrap();
-            if (invoke_tauri_with_arg(BackendCommand::AgentStart.to_string().as_str(), args).await)
+            if (invoke_tauri_with_arg(
+                UiBackendCommand::StartAgentServer.to_string().as_str(),
+                args,
+            )
+            .await)
                 .is_err()
             {
                 let new_ui_state = UiState {
@@ -71,7 +71,7 @@ pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<Mou
 pub fn generate_stop_btn_callback() -> Callback<MouseEvent> {
     Callback::from(move |_| {
         spawn_local(async move {
-            invoke_tauri_without_arg(BackendCommand::AgentStop.to_string().as_str())
+            invoke_tauri_without_arg(UiBackendCommand::StopAgentServer.to_string().as_str())
                 .await
                 .unwrap();
         });
@@ -97,7 +97,8 @@ pub fn generate_agent_server_started_callback(
         ui_state,
     } = param;
     Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        let backend_event: BackendEventWrapper<AgentServerConfigInfo> = event.into_serde().unwrap();
+        let backend_event: UiBackendEventWrapper<AgentServerConfigUiBo> =
+            event.into_serde().unwrap();
         let config_info = backend_event.payload;
         gloo::console::info!(
             "Receive vpn start window event from backend:",

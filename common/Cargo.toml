@@ -12,5 +12,4 @@ edition = "2021"
 derive_more="0.99"
 serde={version = "1", features = ["derive"]}
 thiserror = "1"
-tauri = "1.6"
-ppaass-agent = "0.1.27"
+ppaass-protocol = "0.1"

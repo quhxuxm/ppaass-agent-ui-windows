@@ -9,7 +9,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use yew::prelude::*;
 
-use ppaass_ui_common::{event::AgentEvent, payload::AgentServerConfigInfo};
+use ppaass_ui_common::{event::AGENT_SERVER_EVENT, payload::AgentServerConfigUiBo};
 
 use crate::{
     bo::ui_state::UiState,
@@ -17,14 +17,11 @@ use crate::{
         generate_agent_server_started_callback, generate_agent_server_stop_callback,
         AgentServerStartedCallbackParam, AgentServerStopCallbackParam, StartBtnCallbackParam,
     },
-    components::{
-        backend_event::BackendEvent,
-        input_field::{InputField, InputFieldDataType},
-    },
+    components::input_field::{InputField, InputFieldDataType},
 };
 use crate::{
     bo::{
-        command::BackendCommand,
+        command::UiBackendCommand,
         ui_state::{StatusDetail, StatusLevel},
     },
     callbacks::{generate_start_btn_callback, generate_stop_btn_callback},
@@ -80,16 +77,14 @@ pub fn ppaass_agent_ui() -> Html {
             let agent_stop_listener =
                 generate_agent_server_stop_callback(agent_server_stop_callback_param);
 
-            listen_tauri_event(
-                AgentEvent::Start.to_string().as_str(),
-                &agent_start_listener,
-            );
-            listen_tauri_event(AgentEvent::Stop.to_string().as_str(), &agent_stop_listener);
+            listen_tauri_event(AGENT_SERVER_EVENT, &agent_start_listener);
 
             if ui_state.is_none() {
                 spawn_local(async move {
                     let config_info = match invoke_tauri_without_arg(
-                        BackendCommand::LoadConfigInfo.to_string().as_str(),
+                        UiBackendCommand::LoadAgentServerConifugration
+                            .to_string()
+                            .as_str(),
                     )
                     .await
                     {
@@ -103,7 +98,7 @@ pub fn ppaass_agent_ui() -> Html {
                         }
                     };
 
-                    let config_info: AgentServerConfigInfo = config_info.into_serde().unwrap();
+                    let config_info: AgentServerConfigUiBo = config_info.into_serde().unwrap();
                     gloo::console::info!("Load config info:", format!("{config_info:?}"));
                     let new_ui_state = UiState {
                         user_token: config_info.user_token,
@@ -145,19 +140,18 @@ pub fn ppaass_agent_ui() -> Html {
 
             let upload_network_info = format!(
                 "↑↑↑ Total: {:.2} MB; Avg {:.2} MB/S",
-                ui_state_inner.network_detail.upload_bytes_amount as f64 / (1024 * 1024) as f64,
+                ui_state_inner.network_detail.upload_mb_amount,
                 ui_state_inner.network_detail.upload_mb_per_second
             );
             let download_network_info = format!(
                 "↓↓↓ Total: {:.2} MB; Avg: {:.2} MB/S",
-                ui_state_inner.network_detail.download_bytes_amount as f64 / (1024 * 1024) as f64,
+                ui_state_inner.network_detail.download_mb_amount,
                 ui_state_inner.network_detail.download_mb_per_second
             );
 
             html! {
                 <>
                     <Global css={global_style} />
-                    // <BackendEvent />
                     <div class="left_panel">
                         <Container classes="input_field_panel">
                             <InputField id="user_token" label={"User token:"}
