@@ -8,7 +8,7 @@ edition = "2021"
 yew = { version = "0.21", features = ["csr"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["HtmlInputElement", "HtmlButtonElement","HtmlDivElement"] }
+web-sys = { version = "0.3", features = ["HtmlInputElement", "HtmlButtonElement","HtmlDivElement", "HtmlSpanElement"] }
 js-sys = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
@@ -16,6 +16,7 @@ stylist = { version = "0.13", features = ["yew_integration", "macros", "yew", "p
 gloo = { version = "0.11", features = ["console","events"] }
 serde_json = "1.0"
 derive_more="0.99"
-ppaass-ui-common = {path = "common", package = "ppaass-agent-ui-windows-common-lib"}
+ppaass-agent-ui-model = {path = "model", package = "ppaass-agent-ui-model"}
+
 [workspace]
-members = [ "common","src-tauri"]
+members = [ "model", "src-tauri"]

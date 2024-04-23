@@ -6,11 +6,11 @@ use std::sync::Arc;
 use clap::Parser;
 use ppaass_agent::{command::AgentServerCommand, config::AgentServerConfig};
 use ppaass_agent::{event::AgentServerEvent, server::AgentServer};
-use ppaass_ui_common::{
-    event::{AgentServerBackendToUiEvent, AGENT_SERVER_EVENT},
-    payload::AgentServerConfigUiBo,
-};
 
+use ppaass_agent_ui_model::{
+    model::{UiModelAgentServerConfiguration, UiModelBackendEvent},
+    AGENT_SERVER_EVENT,
+};
 use tauri::{
     CustomMenuItem, Manager, Result, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
     SystemTrayMenuItem, Window, WindowEvent,
@@ -35,20 +35,20 @@ pub struct AgentServerConfigurationUiState {
 #[tauri::command(rename_all = "snake_case")]
 fn load_agent_server_configuration(
     state: State<'_, AgentServerConfigurationUiState>,
-) -> AgentServerConfigUiBo {
+) -> UiModelAgentServerConfiguration {
     tauri::async_runtime::block_on(async {
         let agent_server_config = state.agent_server_config.lock().await;
-        AgentServerConfigUiBo {
+        UiModelAgentServerConfiguration {
             user_token: agent_server_config.user_token().to_owned(),
-            proxy_address: agent_server_config.proxy_addresses().join(";"),
-            listening_port: agent_server_config.port().to_string(),
+            proxy_address: agent_server_config.proxy_addresses().clone(),
+            listening_port: agent_server_config.port(),
         }
     })
 }
 
 #[tauri::command(rename_all = "snake_case")]
 fn start_agent_server(
-    arg: AgentServerConfigUiBo,
+    arg: UiModelAgentServerConfiguration,
     state: State<'_, AgentServerConfigurationUiState>,
     window: Window,
 ) -> Result<()> {
@@ -57,18 +57,8 @@ fn start_agent_server(
         arg
     );
     tauri::async_runtime::block_on(async {
-        let proxy_addresses = arg
-            .proxy_address
-            .split(';')
-            .map(|item| item.to_string())
-            .collect::<Vec<String>>();
-        let listening_port = match arg.listening_port.parse::<u16>() {
-            Ok(listening_port) => listening_port,
-            Err(e) => {
-                error!("Fail to parse listening port because of error: {e:?}");
-                return;
-            }
-        };
+        let proxy_addresses = arg.proxy_address;
+        let listening_port = arg.listening_port;
         let agent_server_config = {
             let mut agent_server_config_lock = state.agent_server_config.lock().await;
             agent_server_config_lock.set_user_token(arg.user_token);
@@ -96,27 +86,27 @@ fn start_agent_server(
                         upload_mb_per_second,
                         download_mb_amount,
                         download_mb_per_second,
-                    } => AgentServerBackendToUiEvent::NetworkState {
+                    } => UiModelBackendEvent::NetworkState {
                         upload_mb_amount,
                         upload_mb_per_second,
                         download_mb_amount,
                         download_mb_per_second,
                     },
                     AgentServerEvent::ServerStartSuccess(port) => {
-                        AgentServerBackendToUiEvent::StartSuccess(port)
+                        UiModelBackendEvent::StartSuccess(port)
                     }
                     AgentServerEvent::ServerStartFail {
                         listening_port,
                         reason,
-                    } => AgentServerBackendToUiEvent::StartFail {
+                    } => UiModelBackendEvent::StartFail {
                         listening_port,
                         reason,
                     },
-                    AgentServerEvent::ServerStopSuccess => AgentServerBackendToUiEvent::StopSuccess,
+                    AgentServerEvent::ServerStopSuccess => UiModelBackendEvent::StopSuccess,
                     AgentServerEvent::ServerStopFail {
                         listening_port,
                         reason,
-                    } => AgentServerBackendToUiEvent::StopFail {
+                    } => UiModelBackendEvent::StopFail {
                         listening_port,
                         reason,
                     },
@@ -124,7 +114,7 @@ fn start_agent_server(
                         client_socket_address,
                         src_address,
                         dst_address,
-                    } => AgentServerBackendToUiEvent::Logging {
+                    } => UiModelBackendEvent::Logging {
                         client_socket_address,
                         src_address,
                         dst_address,
@@ -135,7 +125,7 @@ fn start_agent_server(
                         src_address,
                         dst_address,
                         reason,
-                    } => AgentServerBackendToUiEvent::Logging {
+                    } => UiModelBackendEvent::Logging {
                         client_socket_address,
                         src_address,
                         dst_address,
@@ -145,7 +135,7 @@ fn start_agent_server(
                         client_socket_address,
                         src_address,
                         dst_address,
-                    } => AgentServerBackendToUiEvent::Logging {
+                    } => UiModelBackendEvent::Logging {
                         client_socket_address,
                         src_address,
                         dst_address,
@@ -155,7 +145,7 @@ fn start_agent_server(
                         client_socket_address,
                         src_address,
                         dst_address,
-                    } => AgentServerBackendToUiEvent::Logging {
+                    } => UiModelBackendEvent::Logging {
                         client_socket_address,
                         src_address,
                         dst_address,
@@ -241,12 +231,12 @@ fn main() -> Result<()> {
                             let agent_server_config_ui_bo = {
                                 let agent_server_config_lock =
                                     state.agent_server_config.lock().await;
-                                AgentServerConfigUiBo {
+                                UiModelAgentServerConfiguration {
                                     user_token: agent_server_config_lock.user_token().to_owned(),
                                     proxy_address: agent_server_config_lock
                                         .proxy_addresses()
-                                        .join(";"),
-                                    listening_port: agent_server_config_lock.port().to_string(),
+                                        .clone(),
+                                    listening_port: agent_server_config_lock.port(),
                                 }
                             };
                             if let Err(e) = start_agent_server(

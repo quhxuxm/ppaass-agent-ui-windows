@@ -12,7 +12,7 @@ use yew::{
     classes, function_component, html, use_effect, use_node_ref, use_state, Html, Properties,
 };
 
-use crate::components::network_info::{
+use crate::components::network_chart::{
     echarts_binding::{ECharts, ECHARTS_GLOBAL},
     echarts_vo::{
         EchartGlobalInitOption, EchartOption, EchartOptionAxisLabel, EchartOptionSeriesElement,
@@ -21,16 +21,16 @@ use crate::components::network_info::{
 };
 
 #[derive(Properties, PartialEq)]
-pub struct NetworkInfoProps {
+pub struct NetworkChartProps {
     // pub network_update_callback: Callback<NetworkUpdateInfo>,
-    pub download_content_data: VecDeque<String>,
-    pub upload_content_data: VecDeque<String>,
+    pub download_content_data: VecDeque<f64>,
+    pub upload_content_data: VecDeque<f64>,
 }
 
-#[function_component(NetworkInfo)]
-pub fn network_info(props: &NetworkInfoProps) -> Html {
+#[function_component(NetworkChart)]
+pub fn network_chart(props: &NetworkChartProps) -> Html {
     let chart_target = use_node_ref();
-    let style = StyleSource::try_from(include_str!("network_info.css")).unwrap();
+    let style = StyleSource::try_from(include_str!("network_chart.css")).unwrap();
 
     let echarts_instance_option = EchartOption {
         tooltip: None,
@@ -60,13 +60,23 @@ pub fn network_info(props: &NetworkInfoProps) -> Html {
             EchartOptionSeriesElement {
                 name: Some("Download speed".to_string()),
                 chart_type: "line".to_string(),
-                data: props.download_content_data.clone(),
+                data: props
+                    .download_content_data
+                    .clone()
+                    .iter()
+                    .map(|v| format!("{v:.2}"))
+                    .collect::<Vec<String>>(),
                 area_style: Some(Default::default()),
             },
             EchartOptionSeriesElement {
                 name: Some("Upload speed".to_string()),
                 chart_type: "line".to_string(),
-                data: props.upload_content_data.clone(),
+                data: props
+                    .upload_content_data
+                    .clone()
+                    .iter()
+                    .map(|v| format!("{v:.2}"))
+                    .collect::<Vec<String>>(),
                 area_style: Some(Default::default()),
             },
         ],

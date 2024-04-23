@@ -77,7 +77,7 @@ pub struct EchartOptionSeriesElement {
     pub name: Option<String>,
     #[serde(rename = "type")]
     pub chart_type: String,
-    pub data: VecDeque<String>,
+    pub data: Vec<String>,
     #[serde(rename = "areaStyle")]
     pub area_style: Option<EchartOptionSeriesElementAreaStyle>,
 }

@@ -1,201 +1,238 @@
 use gloo::utils::format::JsValueSerdeExt;
-use ppaass_ui_common::{event::AgentServerBackendToUiEvent, payload::AgentServerConfigUiBo};
 
+use ppaass_agent_ui_model::model::{
+    UiModelAgentServerConfiguration, UiModelBackendEvent, UiModelNetworkDetail,
+    UiModelStatusBarDetail, UiModelStatusBarDetailType,
+};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::{closure::Closure, JsValue};
-use web_sys::{HtmlButtonElement, HtmlInputElement};
+use web_sys::{HtmlButtonElement, HtmlInputElement, HtmlTextAreaElement};
 use yew::{platform::spawn_local, Callback, MouseEvent, NodeRef, UseStateHandle};
 
 use crate::{
-    bo::{
-        command::UiBackendCommand,
-        ui_state::{StatusDetail, StatusLevel, UiState},
-        UiBackendCommandArgWrapper, UiBackendEventWrapper,
-    },
+    bo::{UiBackendCommand, UiBackendCommandArgWrapper, UiBackendEventWrapper, UiStateMainPage},
     wasm_binding::{invoke_tauri_with_arg, invoke_tauri_without_arg},
 };
 
-pub struct StartBtnCallbackParam {
+#[derive(Clone)]
+pub struct UiCallbackParamStartAgentServer {
     pub user_token_input_ref: NodeRef,
-    pub proxy_address_field_ref: NodeRef,
-    pub listening_port_field_ref: NodeRef,
-    pub ui_state: UseStateHandle<Option<UiState>>,
+    pub proxy_address_input_ref: NodeRef,
+    pub listening_port_input_ref: NodeRef,
 }
 
-pub fn generate_start_btn_callback(param: StartBtnCallbackParam) -> Callback<MouseEvent> {
-    let StartBtnCallbackParam {
+pub fn generate_start_agent_server_btn_callback(
+    param: UiCallbackParamStartAgentServer,
+) -> Callback<MouseEvent> {
+    let UiCallbackParamStartAgentServer {
         user_token_input_ref,
-        proxy_address_field_ref,
-        listening_port_field_ref,
-        ui_state,
+        proxy_address_input_ref,
+        listening_port_input_ref,
     } = param;
     Callback::from(move |_| {
-        let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
-        let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
-        let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
-
-        let config_info = AgentServerConfigUiBo {
-            user_token: user_token_input_field.value(),
-            proxy_address: proxy_address_input_field.value(),
-            listening_port: listening_port_field.value(),
+        let user_token_input = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
+        let proxy_address_input = proxy_address_input_ref.cast::<HtmlInputElement>().unwrap();
+        let listening_port_input = listening_port_input_ref.cast::<HtmlInputElement>().unwrap();
+        let ui_model_agent_server_config = UiModelAgentServerConfiguration {
+            user_token: user_token_input.value(),
+            proxy_address: proxy_address_input
+                .value()
+                .split(';')
+                .map(|item| item.to_owned())
+                .collect::<Vec<String>>(),
+            listening_port: listening_port_input.value().parse::<u16>().unwrap(),
         };
         let backend_command_arg_wrapper = UiBackendCommandArgWrapper {
-            arg: config_info.clone(),
+            arg: ui_model_agent_server_config.clone(),
         };
-        let ui_state = ui_state.clone();
         spawn_local(async move {
-            let backend_command_arg_wrapper_json = to_value(&backend_command_arg_wrapper).unwrap();
+            let backend_command_arg_wrapper_js_value =
+                to_value(&backend_command_arg_wrapper).unwrap();
             invoke_tauri_with_arg(
-                UiBackendCommand::StartAgentServer.to_string().as_str(),
-                backend_command_arg_wrapper_json,
+                UiBackendCommand::StartAgentServer.name(),
+                backend_command_arg_wrapper_js_value,
             )
             .await
             .unwrap();
-            // if (invoke_tauri_with_arg(
-            //     UiBackendCommand::StartAgentServer.to_string().as_str(),
-            //     backend_command_arg_wrapper_json,
-            // )
-            // .await)
-            //     .is_err()
-            // {
-            //     let new_ui_state = UiState {
-            //         user_token: config_info.user_token,
-            //         proxy_address: config_info.proxy_address,
-            //         listening_port: config_info.listening_port,
-            //         status_detail: StatusDetail {
-            //             text: "VPN fail to start.".to_string(),
-            //             level: StatusLevel::Error,
-            //         },
-            //         network_detail: Default::default(),
-            //     };
-            //     ui_state.set(Some(new_ui_state));
-            // }
         });
     })
 }
 
-pub fn generate_stop_btn_callback() -> Callback<MouseEvent> {
+pub fn generate_stop_agent_server_btn_callback() -> Callback<MouseEvent> {
     Callback::from(move |_| {
         spawn_local(async move {
-            invoke_tauri_without_arg(UiBackendCommand::StopAgentServer.to_string().as_str())
+            invoke_tauri_without_arg(UiBackendCommand::StopAgentServer.name())
                 .await
                 .unwrap();
         });
     })
 }
 
-pub struct AgentServerStartedCallbackParam {
+pub struct UiCallbackParamBackendEventListener {
     pub user_token_input_ref: NodeRef,
-    pub proxy_address_field_ref: NodeRef,
-    pub listening_port_field_ref: NodeRef,
+    pub proxy_address_input_ref: NodeRef,
+    pub listening_port_input_ref: NodeRef,
     pub start_button_ref: NodeRef,
-    pub ui_state: UseStateHandle<Option<UiState>>,
+    pub stop_button_ref: NodeRef,
+    pub logging_textarea_ref: NodeRef,
+    pub main_page_ui_state: UseStateHandle<UiStateMainPage>,
 }
 
-pub fn generate_agent_server_started_callback(
-    param: AgentServerStartedCallbackParam,
+pub fn generate_backend_event_listener_callback(
+    param: UiCallbackParamBackendEventListener,
 ) -> Closure<dyn FnMut(JsValue)> {
-    let AgentServerStartedCallbackParam {
+    let UiCallbackParamBackendEventListener {
         user_token_input_ref,
-        proxy_address_field_ref,
-        listening_port_field_ref,
+        proxy_address_input_ref,
+        listening_port_input_ref,
         start_button_ref,
-        ui_state,
+        stop_button_ref,
+        logging_textarea_ref,
+        main_page_ui_state,
     } = param;
     Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        let backend_to_ui_event_wrapper: UiBackendEventWrapper<AgentServerBackendToUiEvent> =
+        let user_token_input = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
+        let proxy_address_input = proxy_address_input_ref.cast::<HtmlInputElement>().unwrap();
+        let listening_port_input = listening_port_input_ref.cast::<HtmlInputElement>().unwrap();
+        let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
+        let stop_button = stop_button_ref.cast::<HtmlButtonElement>().unwrap();
+        let logging_textarea = logging_textarea_ref.cast::<HtmlTextAreaElement>().unwrap();
+
+        let backend_to_ui_event_wrapper: UiBackendEventWrapper<UiModelBackendEvent> =
             event.into_serde().unwrap();
         let backend_to_ui_event = backend_to_ui_event_wrapper.payload;
 
-        let user_token_input_field: HtmlInputElement =
-            user_token_input_ref.cast::<HtmlInputElement>().unwrap();
+        match backend_to_ui_event {
+            UiModelBackendEvent::StartSuccess(port) => {
+                proxy_address_input.set_disabled(true);
+                user_token_input.set_disabled(true);
+                listening_port_input.set_disabled(true);
+                start_button.set_disabled(true);
+                stop_button.set_disabled(false);
+                let new_main_page_ui_state = UiStateMainPage {
+                    configuration: Some(UiModelAgentServerConfiguration {
+                        user_token: user_token_input.value(),
+                        proxy_address: proxy_address_input
+                            .value()
+                            .split(';')
+                            .map(|item| item.to_owned())
+                            .collect::<Vec<String>>(),
+                        listening_port: listening_port_input.value().parse::<u16>().unwrap(),
+                    }),
+                    status_bar_detail: UiModelStatusBarDetail {
+                        text: format!("Agent server started success, listning on port: {port}."),
+                        level: UiModelStatusBarDetailType::Info,
+                    },
+                    ..(*main_page_ui_state).clone()
+                };
+                main_page_ui_state.set(new_main_page_ui_state);
+                gloo::console::info!(
+                    "Receive agent server started success window event from backend."
+                );
+            }
+            UiModelBackendEvent::StartFail { reason, .. } => {
+                let new_main_page_ui_state = UiStateMainPage {
+                    status_bar_detail: UiModelStatusBarDetail {
+                        text: reason,
+                        level: UiModelStatusBarDetailType::Error,
+                    },
+                    ..(*main_page_ui_state).clone()
+                };
+                main_page_ui_state.set(new_main_page_ui_state);
+                gloo::console::info!(
+                    "Receive agent server started fail window event from backend."
+                );
+            }
+            UiModelBackendEvent::StopSuccess => {
+                stop_button.set_disabled(true);
+                proxy_address_input.set_disabled(false);
+                user_token_input.set_disabled(false);
+                listening_port_input.set_disabled(false);
+                start_button.set_disabled(false);
+                let new_main_page_ui_state = UiStateMainPage {
+                    status_bar_detail: UiModelStatusBarDetail {
+                        text: "Agent server stopped.".to_string(),
+                        level: UiModelStatusBarDetailType::Info,
+                    },
+                    ..(*main_page_ui_state).clone()
+                };
+                main_page_ui_state.set(new_main_page_ui_state);
 
-        let proxy_address_input_field = proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
-        let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
-        let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-        if let AgentServerBackendToUiEvent::StartSuccess(port) = backend_to_ui_event {
-            proxy_address_input_field.set_disabled(true);
-            user_token_input_field.set_disabled(true);
-            listening_port_field.set_disabled(true);
-            start_button.set_disabled(true);
-            gloo::console::info!(
-                "Receive vpn start window event from backend and going to reset ui with new state:",
-                format!("{new_ui_state:?}")
-            );
-        }
+                gloo::console::info!(
+                    "Receive agent server stopped success window event from backend."
+                );
+            }
+            UiModelBackendEvent::StopFail { reason, .. } => {
+                let new_main_page_ui_state = UiStateMainPage {
+                    status_bar_detail: UiModelStatusBarDetail {
+                        text: reason,
+                        level: UiModelStatusBarDetailType::Error,
+                    },
+                    ..(*main_page_ui_state).clone()
+                };
+                main_page_ui_state.set(new_main_page_ui_state);
+                gloo::console::info!(
+                    "Receive agent server stopped fail window event from backend."
+                );
+            }
+            UiModelBackendEvent::Logging { reason, .. } => {
+                if let Some(reason) = reason {
+                    let origianl_logging_text_value = logging_textarea.value();
+                    let all_original_logging_lines = origianl_logging_text_value
+                        .split("\n\n")
+                        .collect::<Vec<&str>>();
+                    let mut start_index = all_original_logging_lines.len() as isize - 1000;
+                    if start_index < 0 {
+                        start_index = 0;
+                    }
+                    let all_original_logging_lines =
+                        &all_original_logging_lines[start_index as usize..];
+                    let mut logging_text_value = all_original_logging_lines.join("\n\n");
+                    logging_text_value.push_str("\n\n");
 
-        let new_ui_state = UiState {
-            user_token: config_info.user_token,
-            proxy_address: config_info.proxy_address,
-            listening_port: config_info.listening_port.clone(),
-            status_detail: StatusDetail {
-                text: format!(
-                    "VPN started, listening on port: {}",
-                    config_info.listening_port
-                ),
-                level: StatusLevel::Info,
-            },
-            network_detail: Default::default(),
-        };
+                    logging_text_value.push_str(&reason);
 
-        ui_state.set(Some(new_ui_state));
+                    logging_textarea.set_value(&logging_text_value);
+                    let scroll_height = logging_textarea.scroll_height();
+                    logging_textarea.set_scroll_top(scroll_height);
+                }
+            }
+            UiModelBackendEvent::NetworkState {
+                upload_mb_amount,
+                upload_mb_per_second,
+                download_mb_amount,
+                download_mb_per_second,
+            } => {
+                let mut current_network_chart_download_mb_per_second = main_page_ui_state
+                    .network_chart_download_mb_per_second
+                    .clone();
+                current_network_chart_download_mb_per_second.push_back(download_mb_per_second);
+                if current_network_chart_download_mb_per_second.len() > 30 {
+                    current_network_chart_download_mb_per_second.pop_front();
+                }
 
-        gloo::console::info!(
-            "Receive vpn start window event from backend after reset ui state:",
-            format!("{:?}", *ui_state)
-        );
-    })
-}
+                let mut current_network_chart_upload_mb_per_second = main_page_ui_state
+                    .network_chart_upload_mb_per_second
+                    .clone();
+                current_network_chart_upload_mb_per_second.push_back(upload_mb_per_second);
+                if current_network_chart_upload_mb_per_second.len() > 30 {
+                    current_network_chart_upload_mb_per_second.pop_front();
+                }
 
-pub struct AgentServerStopCallbackParam {
-    pub user_token_input_ref: NodeRef,
-    pub proxy_address_field_ref: NodeRef,
-    pub listening_port_field_ref: NodeRef,
-    pub start_button_ref: NodeRef,
-    pub ui_state: UseStateHandle<Option<UiState>>,
-}
-
-pub fn generate_agent_server_stop_callback(
-    param: AgentServerStopCallbackParam,
-) -> Closure<dyn FnMut(JsValue)> {
-    let AgentServerStopCallbackParam {
-        user_token_input_ref,
-        proxy_address_field_ref,
-        listening_port_field_ref,
-        start_button_ref,
-        ui_state,
-    } = param;
-    Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| match *ui_state {
-        None => (),
-        Some(ref ui_state_inner) => {
-            gloo::console::info!("Receive vpn stop window event from backend:", event);
-            let user_token_input_field = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
-            let proxy_address_input_field =
-                proxy_address_field_ref.cast::<HtmlInputElement>().unwrap();
-            let listening_port_field = listening_port_field_ref.cast::<HtmlInputElement>().unwrap();
-            let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-            gloo::console::info!(
-                "Receive vpn stop window event from backend and get all fields success"
-            );
-            let new_ui_state = UiState {
-                user_token: ui_state_inner.user_token.clone(),
-                proxy_address: ui_state_inner.proxy_address.clone(),
-                listening_port: ui_state_inner.listening_port.clone(),
-                status_detail: StatusDetail {
-                    text: "VPN stopped.".to_string(),
-                    level: StatusLevel::Info,
-                },
-                network_detail: Default::default(),
-            };
-            gloo::console::info!(
-                "Receive vpn stop window event from backend and going to reset ui state:",
-                format!("{new_ui_state:?}")
-            );
-            proxy_address_input_field.set_disabled(false);
-            user_token_input_field.set_disabled(false);
-            listening_port_field.set_disabled(false);
-            start_button.set_disabled(false);
-            ui_state.set(Some(new_ui_state));
+                let new_main_page_ui_state = UiStateMainPage {
+                    network_detail: UiModelNetworkDetail {
+                        upload_mb_amount,
+                        upload_mb_per_second,
+                        download_mb_amount,
+                        download_mb_per_second,
+                    },
+                    network_chart_download_mb_per_second:
+                        current_network_chart_download_mb_per_second,
+                    network_chart_upload_mb_per_second: current_network_chart_upload_mb_per_second,
+                    ..(*main_page_ui_state).clone()
+                };
+                main_page_ui_state.set(new_main_page_ui_state);
+            }
         }
     })
 }
