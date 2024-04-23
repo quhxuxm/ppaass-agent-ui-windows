@@ -44,14 +44,12 @@ pub fn agent_server_config_ui() -> Html {
         ..Default::default()
     });
 
-    let ui_callback_param_start_agent_server = UiCallbackParamStartAgentServer {
-        user_token_input_ref: user_token_input_ref.clone(),
-        listening_port_input_ref: listening_port_input_ref.clone(),
-        proxy_address_input_ref: proxy_address_input_ref.clone(),
-    };
-
     let start_agent_server_btn_callback =
-        generate_start_agent_server_btn_callback(ui_callback_param_start_agent_server);
+        generate_start_agent_server_btn_callback(UiCallbackParamStartAgentServer {
+            user_token_input_ref: user_token_input_ref.clone(),
+            listening_port_input_ref: listening_port_input_ref.clone(),
+            proxy_address_input_ref: proxy_address_input_ref.clone(),
+        });
     let stop_agent_server_btn_callback = generate_stop_agent_server_btn_callback();
     {
         let user_token_input_ref = user_token_input_ref.clone();
@@ -110,7 +108,6 @@ pub fn agent_server_config_ui() -> Html {
                 // Do the logic when component destroy
                 // The listener must drop here otherwise it will cause multiple listener registered.
                 // When listener dropped the event will not be listened.
-
                 drop(backend_event_listener);
             }
         });
@@ -165,11 +162,13 @@ pub fn agent_server_config_ui() -> Html {
                     <div class="right_panel">
                         <Container classes="network_status">
                             <label>{"Network status"}</label>
-                            <NetworkChart download_content_data={main_page_ui_state.network_chart_download_mb_per_second.clone()} upload_content_data={main_page_ui_state.network_chart_upload_mb_per_second.clone()}></NetworkChart>
+                            <NetworkChart download_content_data={main_page_ui_state.network_chart_download_mb_per_second.clone()} upload_content_data={main_page_ui_state.network_chart_upload_mb_per_second.clone()}>
+                            </NetworkChart>
                         </Container>
                         <Container classes="logging">
                             <label for="logging_textarea">{"Logging information"}</label>
-                            <textarea id="logging_textarea" ref={logging_textarea_ref} readonly={true}></textarea>
+                            <textarea id="logging_textarea" ref={logging_textarea_ref} readonly={true}>
+                            </textarea>
                         </Container>
                     </div>
                 </>
