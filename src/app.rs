@@ -91,7 +91,17 @@ pub fn agent_server_config_ui() -> Html {
                         }
                     };
                     let ui_model_agent_server_configuration: UiModelAgentServerConfiguration =
-                        configuration_js_value.into_serde().unwrap();
+                        match configuration_js_value.into_serde() {
+                            Ok(ui_model_agent_server_configuration) => {
+                                ui_model_agent_server_configuration
+                            }
+                            Err(e) => {
+                                gloo::console::info!(
+                                    "Fail to parse agent server configuration from backend because of error:", format!("{e:?}")
+                                );
+                                return;
+                            }
+                        };
                     gloo::console::info!(
                         "Load agent server configuraiton:",
                         format!("{ui_model_agent_server_configuration:?}")

@@ -30,9 +30,27 @@ pub fn generate_start_agent_server_btn_callback(
         listening_port_input_ref,
     } = param;
     Callback::from(move |_| {
-        let user_token_input = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
-        let proxy_address_input = proxy_address_input_ref.cast::<HtmlInputElement>().unwrap();
-        let listening_port_input = listening_port_input_ref.cast::<HtmlInputElement>().unwrap();
+        let user_token_input = match user_token_input_ref.cast::<HtmlInputElement>() {
+            Some(user_token_input) => user_token_input,
+            None => {
+                gloo::console::error!("Can not find user token input element");
+                return;
+            }
+        };
+        let proxy_address_input = match proxy_address_input_ref.cast::<HtmlInputElement>() {
+            Some(proxy_address_input) => proxy_address_input,
+            None => {
+                gloo::console::error!("Can not find proxy address input element");
+                return;
+            }
+        };
+        let listening_port_input = match listening_port_input_ref.cast::<HtmlInputElement>() {
+            Some(listening_port_input) => listening_port_input,
+            None => {
+                gloo::console::error!("Can not find listening port input element");
+                return;
+            }
+        };
         let ui_model_agent_server_config = UiModelAgentServerConfiguration {
             user_token: user_token_input.value(),
             proxy_address: proxy_address_input
@@ -40,7 +58,16 @@ pub fn generate_start_agent_server_btn_callback(
                 .split(';')
                 .map(|item| item.to_owned())
                 .collect::<Vec<String>>(),
-            listening_port: listening_port_input.value().parse::<u16>().unwrap(),
+            listening_port: match listening_port_input.value().parse::<u16>() {
+                Ok(listening_port) => listening_port,
+                Err(e) => {
+                    gloo::console::error!(
+                        "Fail to parse listening port because of error:",
+                        format!("{e:?}")
+                    );
+                    return;
+                }
+            },
         };
         let backend_command_arg_wrapper = UiBackendCommandArgWrapper {
             arg: ui_model_agent_server_config.clone(),
@@ -48,12 +75,17 @@ pub fn generate_start_agent_server_btn_callback(
         spawn_local(async move {
             let backend_command_arg_wrapper_js_value =
                 to_value(&backend_command_arg_wrapper).unwrap();
-            invoke_tauri_with_arg(
+            if let Err(e) = invoke_tauri_with_arg(
                 UiBackendCommand::StartAgentServer.name(),
                 backend_command_arg_wrapper_js_value,
             )
             .await
-            .unwrap();
+            {
+                gloo::console::error!(
+                    "Fail to invoke backend start agent server command because of error:",
+                    format!("{e:?}")
+                );
+            }
         });
     })
 }
@@ -61,9 +93,13 @@ pub fn generate_start_agent_server_btn_callback(
 pub fn generate_stop_agent_server_btn_callback() -> Callback<MouseEvent> {
     Callback::from(move |_| {
         spawn_local(async move {
-            invoke_tauri_without_arg(UiBackendCommand::StopAgentServer.name())
-                .await
-                .unwrap();
+            if let Err(e) = invoke_tauri_without_arg(UiBackendCommand::StopAgentServer.name()).await
+            {
+                gloo::console::error!(
+                    "Fail to invoke backend stop agent server command because of error:",
+                    format!("{e:?}")
+                );
+            }
         });
     })
 }
@@ -91,15 +127,60 @@ pub fn generate_backend_event_listener_callback(
         main_page_ui_state,
     } = param;
     Closure::<dyn FnMut(JsValue)>::new(move |event: JsValue| {
-        let user_token_input = user_token_input_ref.cast::<HtmlInputElement>().unwrap();
-        let proxy_address_input = proxy_address_input_ref.cast::<HtmlInputElement>().unwrap();
-        let listening_port_input = listening_port_input_ref.cast::<HtmlInputElement>().unwrap();
-        let start_button = start_button_ref.cast::<HtmlButtonElement>().unwrap();
-        let stop_button = stop_button_ref.cast::<HtmlButtonElement>().unwrap();
-        let logging_textarea = logging_textarea_ref.cast::<HtmlTextAreaElement>().unwrap();
+        let user_token_input = match user_token_input_ref.cast::<HtmlInputElement>() {
+            Some(user_token_input) => user_token_input,
+            None => {
+                gloo::console::error!("Can not find user token input element");
+                return;
+            }
+        };
+        let proxy_address_input = match proxy_address_input_ref.cast::<HtmlInputElement>() {
+            Some(proxy_address_input) => proxy_address_input,
+            None => {
+                gloo::console::error!("Can not find proxy address input element");
+                return;
+            }
+        };
+        let listening_port_input = match listening_port_input_ref.cast::<HtmlInputElement>() {
+            Some(listening_port_input) => listening_port_input,
+            None => {
+                gloo::console::error!("Can not find listening port input element");
+                return;
+            }
+        };
+        let start_button = match start_button_ref.cast::<HtmlButtonElement>() {
+            Some(start_button) => start_button,
+            None => {
+                gloo::console::error!("Can not find start button element");
+                return;
+            }
+        };
+        let stop_button = match stop_button_ref.cast::<HtmlButtonElement>() {
+            Some(stop_button) => stop_button,
+            None => {
+                gloo::console::error!("Can not find stop button element");
+                return;
+            }
+        };
+        let logging_textarea = match logging_textarea_ref.cast::<HtmlTextAreaElement>() {
+            Some(logging_textarea) => logging_textarea,
+            None => {
+                gloo::console::error!("Can not find logging text area element");
+                return;
+            }
+        };
 
         let backend_to_ui_event_wrapper: UiBackendEventWrapper<UiModelBackendEvent> =
-            event.into_serde().unwrap();
+            match event.into_serde() {
+                Ok(backend_to_ui_event_wrapper) => backend_to_ui_event_wrapper,
+                Err(e) => {
+                    gloo::console::error!(
+                        "Fail to parse back end event because of error:",
+                        format!("{e:?}")
+                    );
+                    return;
+                }
+            };
         let backend_to_ui_event = backend_to_ui_event_wrapper.payload;
 
         match backend_to_ui_event {
@@ -117,7 +198,16 @@ pub fn generate_backend_event_listener_callback(
                             .split(';')
                             .map(|item| item.to_owned())
                             .collect::<Vec<String>>(),
-                        listening_port: listening_port_input.value().parse::<u16>().unwrap(),
+                        listening_port: match listening_port_input.value().parse::<u16>() {
+                            Ok(listening_port) => listening_port,
+                            Err(e) => {
+                                gloo::console::error!(
+                                    "Fail to parse listening port because of error:",
+                                    format!("{e:?}")
+                                );
+                                return;
+                            }
+                        },
                     }),
                     status_bar_detail: UiModelStatusBarDetail {
                         text: format!("Agent server started success, listning on port: {port}."),
