@@ -19,9 +19,10 @@
     },
     "windows": [
       {
-        "title": "ppaass-agent-ui-windows",
-        "width": 800,
-        "height": 600
+        "title": "Ppaass Agent",
+        "width": 785,
+        "height": 642,
+        "resizable": false
       }
     ],
     "security": {
