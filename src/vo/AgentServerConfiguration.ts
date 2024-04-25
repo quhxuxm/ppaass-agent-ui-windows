@@ -1,4 +1,4 @@
-class AgentServerConfiguration {
-    constructor(public userToke: string, public proxyAddresses: [string], public port: number) {
+export class AgentServerConfiguration {
+    constructor(public userToken?: string, public proxyAddresses?: string[], public port?: number) {
     }
 }

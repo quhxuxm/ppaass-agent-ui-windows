@@ -2,50 +2,71 @@
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import Container from "./components/Container.vue";
-import InputField from "./components/InputField.vue";
 import Button from "./components/Button.vue";
 import LoggingArea from "./components/LoggingArea.vue";
 import NetworkChart from "./components/NetworkChart.vue";
 import NetworkInfo from "./components/NetworkInfo.vue";
 import SystemStatus from "./components/SystemStatus.vue";
 import {invoke} from "@tauri-apps/api/tauri";
-import {onMounted} from "vue";
+import {onMounted, ref} from "vue";
+import {AgentServerConfiguration} from "./vo/AgentServerConfiguration"
+import InputField from "./components/InputField.vue";
 
+const userToken = ref<string>();
+const proxyAddresses = ref<string>();
+const port = ref<string>()
 
 onMounted(() => {
   invoke<AgentServerConfiguration>("load_agent_server_configuration").then(value => {
-
+    console.info("Success to load agent server configuration:", value);
+    userToken.value = value.userToken;
+    proxyAddresses.value = value.proxyAddresses?.join(";");
+    port.value = value.port?.toString();
   }).catch(error => {
-
+    console.error("Fail to load agent server configuration:", error);
   });
 });
 
-function onStartBtnClick(event: MouseEvent): boolean {
-  console.log("On start button click, receive event: ", event);
-  return true
+function onStartBtnClick() {
+  let agentConfiguration = new AgentServerConfiguration(userToken.value, proxyAddresses.value?.split(";"), parseInt(port.value ? port.value : "0"))
+  console.log("On start button click, current agent configuration will be: ", agentConfiguration);
+  invoke("start_agent_server", {
+    arg: agentConfiguration
+  });
 }
 
-function onStopBtnClick(event: MouseEvent): boolean {
+function onStopBtnClick(event: MouseEvent) {
   console.log("On stop button click, receive event: ", event);
-  return true
+  invoke("stop_agent_server");
 }
-
 </script>
 
 <template>
   <div class="left_panel">
     <Container class="input_field_panel">
       <InputField
-          hint="Register a user from ppaass website" label="User token:"
-          name="user_token" place-holder="Enter the user token">
+          v-model="userToken"
+          hint="Register a user from ppaass website"
+          label="User token:"
+          name="user_token"
+          place-holder="Enter the user token"
+          value-type="text">
       </InputField>
-      <InputField hint="Proxy addresses are separate with ;"
-                  label="Proxy address:" name="proxy_address"
-                  place-holder="Enter the proxy addresses">
+      <InputField
+          v-model="proxyAddresses"
+          hint="Proxy addresses are separate with ;"
+          label="Proxy address:"
+          name="proxy_address"
+          place-holder="Enter the proxy addresses"
+          value-type="address">
       </InputField>
-      <InputField hint="Listening port should between 1025~65536"
-                  label="Listening port:" name="listening_port"
-                  place-holder="Enter the listening port">
+      <InputField
+          v-model="port"
+          :max-number="65535"
+          :min-number="1025"
+          hint="Listening port should between 1025~65535"
+          label="Listening port:"
+          name="listening_port" place-holder="Enter the listening port" value-type="number">
       </InputField>
     </Container>
     <Container class="button_panel">
@@ -73,13 +94,6 @@ function onStopBtnClick(event: MouseEvent): boolean {
 <style scoped>
 .left_panel {
   width: 390px;
-}
-
-.loading_message {
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 250px;
-  font-size: 2em;
 }
 
 .input_field_panel {

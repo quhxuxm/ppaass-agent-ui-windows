@@ -51,7 +51,7 @@ fn start_agent_server(
     arg: AgentServerConfigurationVo,
     state: State<'_, AgentServerConfigurationUiState>,
     window: Window,
-) -> Result<()> {
+) {
     println!(
         "Receive agent  server configuration ui business object: {:?}",
         arg
@@ -158,11 +158,10 @@ fn start_agent_server(
             }
         });
     });
-    Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn stop_agent_server(state: State<'_, AgentServerConfigurationUiState>) -> Result<()> {
+fn stop_agent_server(state: State<'_, AgentServerConfigurationUiState>) {
     info!("Going to stop agent server.");
     tauri::async_runtime::block_on(async {
         let agent_server_command_tx_lock = state.agent_server_command_tx.lock().await;
@@ -171,8 +170,7 @@ fn stop_agent_server(state: State<'_, AgentServerConfigurationUiState>) -> Resul
                 error!("Fail to send agent server command because of error: {e:?}")
             };
         }
-    });
-    Ok(())
+    })
 }
 
 fn main() -> Result<()> {
@@ -219,9 +217,7 @@ fn main() -> Result<()> {
                 SYSTEM_TRAY_MENU_ITEM_STOP_AGENT => {
                     if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentServerConfigurationUiState>();
-                        if let Err(e) = stop_agent_server(state.clone()) {
-                            error!("Fail to stop vpn because of error: {e:?}");
-                        }
+                        stop_agent_server(state.clone());
                     }
                 }
                 SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
@@ -239,13 +235,11 @@ fn main() -> Result<()> {
                                     port: agent_server_config_lock.port(),
                                 }
                             };
-                            if let Err(e) = start_agent_server(
+                            start_agent_server(
                                 agent_server_config_ui_bo,
                                 state.clone(),
                                 window.clone(),
-                            ) {
-                                error!("Fail to start agent server because of error: {e:?}");
-                            };
+                            );
                         });
                     }
                 }
