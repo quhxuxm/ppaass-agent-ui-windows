@@ -1,8 +1,8 @@
 [package]
 name = "ppaass-agent-ui-windows"
 version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "The ppaass agent ui for Windows system"
+authors = ["Qu Hao"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,9 +11,19 @@ edition = "2021"
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = ["shell-open"] }
+tauri = { version = "1", features = ["shell-open", "system-tray"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+ppaass-agent = "0.1.31"
+ppaass-protocol = "0.1.1"
+clap = "4.5"
+thiserror = "1.0"
+tokio = "1"
+derive_more = "0.99"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["chrono", "json"] }
+tracing-appender = "0.2"
+anyhow = "1"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

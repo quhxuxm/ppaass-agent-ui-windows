@@ -6,19 +6,38 @@ import InputField from "./components/InputField.vue";
 import Button from "./components/Button.vue";
 import LoggingArea from "./components/LoggingArea.vue";
 import NetworkChart from "./components/NetworkChart.vue";
+import NetworkInfo from "./components/NetworkInfo.vue";
+import SystemStatus from "./components/SystemStatus.vue";
+import {invoke} from "@tauri-apps/api/tauri";
+import {onMounted} from "vue";
 
-function onStartBtnClick(): boolean {
-  console.log("On start button click");
+
+onMounted(() => {
+  invoke<AgentServerConfiguration>("load_agent_server_configuration").then(value => {
+
+  }).catch(error => {
+
+  });
+});
+
+function onStartBtnClick(event: MouseEvent): boolean {
+  console.log("On start button click, receive event: ", event);
   return true
 }
+
+function onStopBtnClick(event: MouseEvent): boolean {
+  console.log("On stop button click, receive event: ", event);
+  return true
+}
+
 </script>
 
 <template>
   <div class="left_panel">
     <Container class="input_field_panel">
-      <InputField hint="Register a user from ppaass website"
-                  label="User token:" name="user_token"
-                  place-holder="Enter the user token">
+      <InputField
+          hint="Register a user from ppaass website" label="User token:"
+          name="user_token" place-holder="Enter the user token">
       </InputField>
       <InputField hint="Proxy addresses are separate with ;"
                   label="Proxy address:" name="proxy_address"
@@ -30,15 +49,14 @@ function onStartBtnClick(): boolean {
       </InputField>
     </Container>
     <Container class="button_panel">
-      <Button label="Start agent" @on-click="onStartBtnClick()"></Button>
-      <Button label="Stop agent"></Button>
+      <Button label="Start" @onclick="onStartBtnClick"></Button>
+      <Button label="Stop" @onclick="onStopBtnClick"></Button>
     </Container>
     <Container class="network_panel">
-      Network pannel<br/>
-      Network pannel
+      <NetworkInfo :download_mb_amount="0" :download_mb_per_second="0" :upload_mb_amount="0" :upload_mb_per_second="0"/>
     </Container>
     <Container class="status_panel">
-      Status pannel
+      <SystemStatus text="Agent server started success, listning on port: 10080." type="error"/>
     </Container>
   </div>
   <div class="right_panel">

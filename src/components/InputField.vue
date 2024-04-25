@@ -1,13 +1,20 @@
 <script lang="ts" setup>
-const props = defineProps(["id", "name", "label", "placeHolder", "hint"]);
+const props = defineProps<{
+  id?: string,
+  name?: string,
+  label?: string,
+  placeHolder?: string,
+  hint?: string,
+  disable?: boolean
+}>();
 </script>
 
 <template>
-  <div class="input_field">
+  <div :class="{'disable':props.disable}" class="input_field">
     <label v-if="props.label" :for="props.id">
       {{ props.label }}
     </label>
-    <input :id="props.id" :name="props.name" :placeholder="props.placeHolder" type="text"/>
+    <input :id="props.id" :disabled="props.disable" :name="props.name" :placeholder="props.placeHolder" type="text"/>
     <span v-if="props.hint">
       {{ props.hint }}
     </span>
@@ -28,6 +35,10 @@ const props = defineProps(["id", "name", "label", "placeHolder", "hint"]);
   font-weight: bold;
 }
 
+.input_field.disable label {
+  color: #999999;
+}
+
 .input_field input {
   margin: 5px;
   padding: 8px;
@@ -38,11 +49,20 @@ const props = defineProps(["id", "name", "label", "placeHolder", "hint"]);
   box-shadow: none;
 }
 
+.input_field.disable input {
+  color: #999999;
+  border: 1px solid #999999;
+}
+
 .input_field span {
   font-size: 0.9em;
   color: #555555;
   margin: 5px;
   padding: 5px;
+}
+
+.input_field.disable span {
+  color: #999999;
 }
 
 .input_field span.error {
