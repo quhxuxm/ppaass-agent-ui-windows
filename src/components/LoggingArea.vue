@@ -16,7 +16,7 @@ onUpdated(() => {
 </script>
 
 <template>
-  <textarea ref="textAreaRef" :value="props.logs?.join('\n\n')">
+  <textarea ref="textAreaRef" :value="props.logs?.join('\n\n')" readonly>
   </textarea>
 </template>
 
