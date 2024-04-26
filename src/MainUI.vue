@@ -27,9 +27,13 @@ const downloadMbPerSecond = ref<number>(0);
 const uploadMbAmount = ref<number>(0);
 const uploadMbPerSecond = ref<number>(0);
 
-const loggingContent = ref<string[]>([]);
+const loggingContentRef = ref<string[]>([]);
+
+const downloadMbPerSecondArrayRef = ref<number[]>([]);
+const uploadMbPerSecondArrayRef = ref<number[]>([]);
 
 const started = ref<boolean>(false);
+
 
 onMounted(() => {
   invoke<AgentServerConfiguration>("load_agent_server_configuration").then(value => {
@@ -71,11 +75,12 @@ listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
     return;
   }
   if (event.payload.eventType == AgentServerEventType.Logging) {
-    loggingContent.value?.push(event.payload.content);
-    if (loggingContent.value.length > 100) {
-      loggingContent.value = loggingContent.value.slice(1, loggingContent.value.length);
+    loggingContentRef.value.push(event.payload.content);
+    loggingContentRef.value = loggingContentRef.value.slice(0, loggingContentRef.value.length);
+    if (loggingContentRef.value.length > 100) {
+      loggingContentRef.value = loggingContentRef.value.slice(1, loggingContentRef.value.length);
     }
-    console.log("Success push logging, current logging content: ", loggingContent)
+    console.log("Success push logging, current logging content: ", loggingContentRef)
     return;
   }
   if (event.payload.eventType == AgentServerEventType.NetworkState) {
@@ -84,6 +89,19 @@ listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
     downloadMbPerSecond.value = networkState.downloadMbPerSecond;
     uploadMbAmount.value = networkState.uploadMbAmount;
     uploadMbPerSecond.value = networkState.uploadMbPerSecond;
+    let downloadPerSecondArray = downloadMbPerSecondArrayRef.value.slice(0, downloadMbPerSecondArrayRef.value.length);
+    downloadPerSecondArray.push(networkState.downloadMbPerSecond);
+    if (downloadPerSecondArray.length > 50) {
+      downloadPerSecondArray = downloadPerSecondArray.slice(downloadPerSecondArray.length - 50, downloadPerSecondArray.length);
+    }
+    downloadMbPerSecondArrayRef.value = downloadPerSecondArray;
+
+    let uploadPerSecondArray = uploadMbPerSecondArrayRef.value.slice(0, uploadMbPerSecondArrayRef.value.length);
+    uploadPerSecondArray.push(networkState.uploadMbPerSecond);
+    if (uploadPerSecondArray.length > 50) {
+      uploadPerSecondArray = uploadPerSecondArray.slice(uploadPerSecondArray.length - 50, uploadPerSecondArray.length);
+    }
+    uploadMbPerSecondArrayRef.value = uploadPerSecondArray;
     return;
   }
 }).then((unListen) => {
@@ -158,11 +176,12 @@ function onStopBtnClick(event: MouseEvent) {
   </div>
   <div class="right_panel">
     <Container class="network_status">
-      <NetworkChart/>
+      <NetworkChart :download-mb-per-second-array="downloadMbPerSecondArrayRef"
+                    :upload-mb-per-second-array="uploadMbPerSecondArrayRef"/>
     </Container>
     <Container class="logging">
       <label>Logging:</label>
-      <LoggingArea :logs="loggingContent"/>
+      <LoggingArea :logs="loggingContentRef"/>
     </Container>
   </div>
 </template>

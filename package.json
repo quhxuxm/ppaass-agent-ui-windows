@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "vue": "^3.3.4",
-    "@tauri-apps/api": "^1"
+    "@tauri-apps/api": "^1",
+    "echarts": "5.5.0",
+    "@types/echarts": "^4.9.22"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
