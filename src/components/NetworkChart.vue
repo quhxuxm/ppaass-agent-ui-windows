@@ -37,7 +37,7 @@ onMounted(() => {
         type: "line",
         data: props.downloadMbPerSecondArray,
         areaStyle: {
-          color: "#aef4ea"
+          color: "#EEEEEE"
         }
       },
       {
@@ -45,7 +45,7 @@ onMounted(() => {
         type: "line",
         data: props.uploadMbPerSecondArray,
         areaStyle: {
-          color: "#ece44c",
+          color: "#EEEEEE"
         }
       }
     ]
