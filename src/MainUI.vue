@@ -27,7 +27,11 @@ const downloadMbPerSecond = ref<number>(0);
 const uploadMbAmount = ref<number>(0);
 const uploadMbPerSecond = ref<number>(0);
 
-const loggingContentRef = ref<string[]>([]);
+const loggingRecordsRef = ref<{
+  logType: "info" | "warn" | "error",
+  content: string,
+  isAgentServer: boolean
+}[]>([]);
 
 const downloadMbPerSecondArrayRef = ref<number[]>([]);
 const uploadMbPerSecondArrayRef = ref<number[]>([]);
@@ -47,6 +51,22 @@ onMounted(() => {
   });
 });
 
+function pushLoggingRecords(loggingRecord: {
+  logType: "info" | "error" | "warn",
+  content: string,
+  isAgentServer: boolean
+}) {
+  loggingRecordsRef.value.push({
+    logType: loggingRecord.logType,
+    content: loggingRecord.content,
+    isAgentServer: loggingRecord.isAgentServer
+  });
+  loggingRecordsRef.value = loggingRecordsRef.value.slice(0, loggingRecordsRef.value.length);
+  if (loggingRecordsRef.value.length > 100) {
+    loggingRecordsRef.value = loggingRecordsRef.value.slice(1, loggingRecordsRef.value.length);
+  }
+}
+
 let unListenAgentServerEvent: UnlistenFn;
 listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
   console.info("Receive server event: ", event.payload)
@@ -54,33 +74,52 @@ listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
     systemStatusText.value = event.payload.content;
     systemStatusType.value = "info";
     started.value = true;
+    pushLoggingRecords({
+      logType: "info",
+      content: event.payload.content,
+      isAgentServer: true
+    })
     return;
   }
   if (event.payload.eventType == AgentServerEventType.StartFail) {
     systemStatusText.value = event.payload.content;
     systemStatusType.value = "error";
     started.value = false;
+    pushLoggingRecords({
+      logType: "error",
+      content: event.payload.content,
+      isAgentServer: true
+    })
     return;
   }
   if (event.payload.eventType == AgentServerEventType.StopSuccess) {
     systemStatusText.value = event.payload.content;
     systemStatusType.value = "info";
     started.value = false;
+    pushLoggingRecords({
+      logType: "info",
+      content: event.payload.content,
+      isAgentServer: true
+    })
     return;
   }
   if (event.payload.eventType == AgentServerEventType.StopFail) {
     systemStatusText.value = event.payload.content;
     systemStatusType.value = "error";
     started.value = false;
+    pushLoggingRecords({
+      logType: "error",
+      content: event.payload.content,
+      isAgentServer: true
+    })
     return;
   }
   if (event.payload.eventType == AgentServerEventType.Logging) {
-    loggingContentRef.value.push(event.payload.content);
-    loggingContentRef.value = loggingContentRef.value.slice(0, loggingContentRef.value.length);
-    if (loggingContentRef.value.length > 100) {
-      loggingContentRef.value = loggingContentRef.value.slice(1, loggingContentRef.value.length);
-    }
-    console.log("Success push logging, current logging content: ", loggingContentRef)
+    pushLoggingRecords({
+      logType: "info",
+      content: event.payload.content,
+      isAgentServer: false
+    })
     return;
   }
   if (event.payload.eventType == AgentServerEventType.NetworkState) {
@@ -181,7 +220,7 @@ function onStopBtnClick(event: MouseEvent) {
     </Container>
     <Container class="logging">
       <label>Logging:</label>
-      <LoggingArea :logs="loggingContentRef"/>
+      <LoggingArea :logs="loggingRecordsRef"/>
     </Container>
   </div>
 </template>
