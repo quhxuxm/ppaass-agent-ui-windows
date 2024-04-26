@@ -1,9 +1,23 @@
 <script lang="ts" setup>
+import {onUpdated, ref} from "vue";
+
+const props = defineProps<{
+  logs?: string[]
+}>();
+const textAreaRef = ref<HTMLTextAreaElement>();
+
+onUpdated(() => {
+  if (!textAreaRef.value) {
+    return;
+  }
+  textAreaRef.value.scrollTop = textAreaRef.value.scrollHeight;
+})
 
 </script>
 
 <template>
-  <textarea></textarea>
+  <textarea ref="textAreaRef" :value="props.logs?.join('\n\n')">
+  </textarea>
 </template>
 
 <style scoped>

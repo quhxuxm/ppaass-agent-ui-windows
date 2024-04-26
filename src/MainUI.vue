@@ -8,13 +8,28 @@ import NetworkChart from "./components/NetworkChart.vue";
 import NetworkInfo from "./components/NetworkInfo.vue";
 import SystemStatus from "./components/SystemStatus.vue";
 import {invoke} from "@tauri-apps/api/tauri";
-import {onMounted, ref} from "vue";
+import {onMounted, onUnmounted, ref} from "vue";
 import {AgentServerConfiguration} from "./vo/AgentServerConfiguration"
 import InputField from "./components/InputField.vue";
+import {AgentServerEvent} from "./vo/AgentServerEvent.ts";
+import {listen, UnlistenFn} from "@tauri-apps/api/event";
+import {AgentServerEventType} from "./vo/AgentServerEventType.ts";
+import {NetworkState} from "./vo/NetworkState.ts";
 
 const userToken = ref<string>();
 const proxyAddresses = ref<string>();
 const port = ref<string>()
+const systemStatusText = ref<string>("Loading ...");
+const systemStatusType = ref<"info" | "error" | "warn">();
+
+const downloadMbAmount = ref<number>(0);
+const downloadMbPerSecond = ref<number>(0);
+const uploadMbAmount = ref<number>(0);
+const uploadMbPerSecond = ref<number>(0);
+
+const loggingContent = ref<string[]>([]);
+
+const started = ref<boolean>(false);
 
 onMounted(() => {
   invoke<AgentServerConfiguration>("load_agent_server_configuration").then(value => {
@@ -22,10 +37,67 @@ onMounted(() => {
     userToken.value = value.userToken;
     proxyAddresses.value = value.proxyAddresses?.join(";");
     port.value = value.port?.toString();
+    systemStatusText.value = "Ready to start agent server.";
   }).catch(error => {
     console.error("Fail to load agent server configuration:", error);
   });
 });
+
+let unListenAgentServerEvent: UnlistenFn;
+listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
+  console.info("Receive server event: ", event.payload)
+  if (event.payload.eventType == AgentServerEventType.StartSuccess) {
+    systemStatusText.value = event.payload.content;
+    systemStatusType.value = "info";
+    started.value = true;
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.StartFail) {
+    systemStatusText.value = event.payload.content;
+    systemStatusType.value = "error";
+    started.value = false;
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.StopSuccess) {
+    systemStatusText.value = event.payload.content;
+    systemStatusType.value = "info";
+    started.value = false;
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.StopFail) {
+    systemStatusText.value = event.payload.content;
+    systemStatusType.value = "error";
+    started.value = false;
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.Logging) {
+    loggingContent.value?.push(event.payload.content);
+    if (loggingContent.value.length > 100) {
+      loggingContent.value = loggingContent.value.slice(1, loggingContent.value.length);
+    }
+    console.log("Success push logging, current logging content: ", loggingContent)
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.NetworkState) {
+    let networkState = JSON.parse(event.payload.content) as NetworkState;
+    downloadMbAmount.value = networkState.downloadMbAmount;
+    downloadMbPerSecond.value = networkState.downloadMbPerSecond;
+    uploadMbAmount.value = networkState.uploadMbAmount;
+    uploadMbPerSecond.value = networkState.uploadMbPerSecond;
+    return;
+  }
+}).then((unListen) => {
+  unListenAgentServerEvent = unListen;
+});
+
+
+onUnmounted(() => {
+  if (unListenAgentServerEvent) {
+    unListenAgentServerEvent();
+  }
+
+});
+
 
 function onStartBtnClick() {
   let agentConfiguration = new AgentServerConfiguration(userToken.value, proxyAddresses.value?.split(";"), parseInt(port.value ? port.value : "0"))
@@ -46,6 +118,7 @@ function onStopBtnClick(event: MouseEvent) {
     <Container class="input_field_panel">
       <InputField
           v-model="userToken"
+          :disable="started"
           hint="Register a user from ppaass website"
           label="User token:"
           name="user_token"
@@ -54,6 +127,7 @@ function onStopBtnClick(event: MouseEvent) {
       </InputField>
       <InputField
           v-model="proxyAddresses"
+          :disable="started"
           hint="Proxy addresses are separate with ;"
           label="Proxy address:"
           name="proxy_address"
@@ -62,6 +136,7 @@ function onStopBtnClick(event: MouseEvent) {
       </InputField>
       <InputField
           v-model="port"
+          :disable="started"
           :max-number="65535"
           :min-number="1025"
           hint="Listening port should between 1025~65535"
@@ -70,14 +145,15 @@ function onStopBtnClick(event: MouseEvent) {
       </InputField>
     </Container>
     <Container class="button_panel">
-      <Button label="Start" @onclick="onStartBtnClick"></Button>
-      <Button label="Stop" @onclick="onStopBtnClick"></Button>
+      <Button :disable="started" label="Start" @onclick="onStartBtnClick"></Button>
+      <Button :disable="!started" label="Stop" @onclick="onStopBtnClick"></Button>
     </Container>
     <Container class="network_panel">
-      <NetworkInfo :download_mb_amount="0" :download_mb_per_second="0" :upload_mb_amount="0" :upload_mb_per_second="0"/>
+      <NetworkInfo :download_mb_amount="downloadMbAmount" :download_mb_per_second="downloadMbPerSecond"
+                   :upload_mb_amount="uploadMbAmount" :upload_mb_per_second="uploadMbPerSecond"/>
     </Container>
     <Container class="status_panel">
-      <SystemStatus text="Agent server started success, listning on port: 10080." type="error"/>
+      <SystemStatus :text="systemStatusText" :type="systemStatusType"/>
     </Container>
   </div>
   <div class="right_panel">
@@ -86,7 +162,7 @@ function onStopBtnClick(event: MouseEvent) {
     </Container>
     <Container class="logging">
       <label>Logging:</label>
-      <LoggingArea/>
+      <LoggingArea :logs="loggingContent"/>
     </Container>
   </div>
 </template>

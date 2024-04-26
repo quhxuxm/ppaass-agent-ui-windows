@@ -1,8 +1,12 @@
 <script lang="ts" setup>
+
+
 const props = defineProps<{
-  text?: string
-  type?: string
-}>()
+  text?: string,
+  type?: "info" | "error" | "warn"
+}>();
+
+
 </script>
 
 <template>
@@ -16,6 +20,10 @@ section {
 
 section.info {
   color: #3c81d5;
+}
+
+section.warn {
+  color: #d5bc3c;
 }
 
 section.error {

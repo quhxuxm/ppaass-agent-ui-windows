@@ -1,4 +1,3 @@
-use ppaass_protocol::message::values::address::PpaassUnifiedAddress;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
@@ -12,34 +11,36 @@ pub struct AgentServerConfigurationVo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub enum AgentServerEventVo {
-    NetworkState {
-        #[serde(rename = "uploadMbAmount")]
-        upload_mb_amount: f64,
-        #[serde(rename = "uploadMbPerSecond")]
-        upload_mb_per_second: f64,
-        #[serde(rename = "downloadMbAmount")]
-        download_mb_amount: f64,
-        #[serde(rename = "downloadMbPerSecond")]
-        download_mb_per_second: f64,
-    },
-    StartSuccess(#[serde(rename = "port")] u16),
-    StartFail {
-        port: u16,
-        reason: String,
-    },
+pub enum AgentServerEventType {
+    #[serde(rename = "NetworkState")]
+    NetworkState,
+    #[serde(rename = "StartSuccess")]
+    StartSuccess,
+    #[serde(rename = "StartFail")]
+    StartFail,
+    #[serde(rename = "StopSuccess")]
     StopSuccess,
-    StopFail {
-        port: u16,
-        reason: String,
-    },
-    Logging {
-        #[serde(rename = "clientSocketAddress")]
-        client_socket_address: PpaassUnifiedAddress,
-        #[serde(rename = "srcAddress")]
-        src_address: Option<PpaassUnifiedAddress>,
-        #[serde(rename = "dstAddress")]
-        dst_address: Option<PpaassUnifiedAddress>,
-        reason: Option<String>,
-    },
+    #[serde(rename = "StopFail")]
+    StopFail,
+    #[serde(rename = "Logging")]
+    Logging,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct AgentServerEventVo {
+    pub content: String,
+    #[serde(rename = "eventType")]
+    pub event_type: AgentServerEventType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct NetworkStateVo {
+    #[serde(rename = "uploadMbAmount")]
+    pub upload_mb_amount: f64,
+    #[serde(rename = "uploadMbPerSecond")]
+    pub upload_mb_per_second: f64,
+    #[serde(rename = "downloadMbAmount")]
+    pub download_mb_amount: f64,
+    #[serde(rename = "downloadMbPerSecond")]
+    pub download_mb_per_second: f64,
 }

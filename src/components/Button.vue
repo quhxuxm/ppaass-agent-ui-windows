@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-const props = defineProps(["label", "classes"]);
+const props = defineProps(["label", "classes", "disable"]);
 const emits = defineEmits<{
   (eventName: "onclick", event: MouseEvent): void
 }>();
@@ -11,7 +11,7 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-  <button :class="props.classes" @click="onClick">
+  <button :class="props.classes" :disabled="props.disable" @click="onClick">
     {{ props.label }}
   </button>
 </template>

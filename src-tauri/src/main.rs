@@ -15,7 +15,7 @@ use tokio::{runtime::Builder, sync::mpsc::Sender};
 use tokio::sync::Mutex;
 use tracing::{error, info};
 
-use crate::vo::{AgentServerConfigurationVo, AgentServerEventVo};
+use crate::vo::{AgentServerConfigurationVo, AgentServerEventType, AgentServerEventVo, NetworkStateVo};
 
 mod vo;
 
@@ -86,70 +86,77 @@ fn start_agent_server(
                         upload_mb_per_second,
                         download_mb_amount,
                         download_mb_per_second,
-                    } => AgentServerEventVo::NetworkState {
-                        upload_mb_amount,
-                        upload_mb_per_second,
-                        download_mb_amount,
-                        download_mb_per_second,
-                    },
-                    AgentServerEvent::ServerStartSuccess(port) => {
-                        AgentServerEventVo::StartSuccess(port)
+                    } => {
+                        let network_state_vo = NetworkStateVo {
+                            upload_mb_amount,
+                            upload_mb_per_second,
+                            download_mb_amount,
+                            download_mb_per_second,
+                        };
+                        let content = match serde_json::to_string(&network_state_vo) {
+                            Ok(content) => content,
+                            Err(e) => {
+                                error!("Fail to serialize network state to json because of error: {e:?}");
+                                continue;
+                            }
+                        };
+                        AgentServerEventVo {
+                            content,
+                            event_type: AgentServerEventType::NetworkState,
+                        }
                     }
-                    AgentServerEvent::ServerStartFail {
-                        listening_port,
-                        reason,
-                    } => AgentServerEventVo::StartFail {
-                        port: listening_port,
-                        reason,
+                    AgentServerEvent::ServerStartSuccess(port) => AgentServerEventVo {
+                        content: format!("Agent server start success, listening on: {port}"),
+                        event_type: AgentServerEventType::StartSuccess,
                     },
-                    AgentServerEvent::ServerStopSuccess => AgentServerEventVo::StopSuccess,
+                    AgentServerEvent::ServerStartFail {
+                        ..
+                    } => AgentServerEventVo {
+                        content: format!("Agent server start fail, can not listening on: {port}."),
+                        event_type: AgentServerEventType::StartFail,
+                    },
+                    AgentServerEvent::ServerStopSuccess => AgentServerEventVo {
+                        content: "Agent server stop success.".to_string(),
+                        event_type: AgentServerEventType::StopSuccess,
+                    },
                     AgentServerEvent::ServerStopFail {
-                        listening_port,
-                        reason,
-                    } => AgentServerEventVo::StopFail {
-                        port: listening_port,
-                        reason,
+                        ..
+                    } => AgentServerEventVo {
+                        content: "Agent server stop fail.".to_string(),
+                        event_type: AgentServerEventType::StopFail,
                     },
                     AgentServerEvent::TunnelInitializeSuccess {
                         client_socket_address,
                         src_address,
                         dst_address,
-                    } => AgentServerEventVo::Logging {
-                        client_socket_address,
-                        src_address,
-                        dst_address,
-                        reason: None,
+                    } => AgentServerEventVo {
+                        content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] initialize success.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
+                        event_type: AgentServerEventType::Logging,
                     },
                     AgentServerEvent::TunnelInitializeFail {
                         client_socket_address,
                         src_address,
                         dst_address,
-                        reason,
-                    } => AgentServerEventVo::Logging {
-                        client_socket_address,
-                        src_address,
-                        dst_address,
-                        reason: Some(reason),
+                        ..
+                    } => AgentServerEventVo {
+                        content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] initialize fail.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
+                        event_type: AgentServerEventType::Logging,
                     },
                     AgentServerEvent::TunnelStartRelay {
                         client_socket_address,
                         src_address,
                         dst_address,
-                    } => AgentServerEventVo::Logging {
-                        client_socket_address,
-                        src_address,
-                        dst_address,
-                        reason: None,
+                    } => AgentServerEventVo {
+                        content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] start relay.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
+                        event_type: AgentServerEventType::Logging,
                     },
                     AgentServerEvent::TunnelClose {
                         client_socket_address,
                         src_address,
                         dst_address,
-                    } => AgentServerEventVo::Logging {
-                        client_socket_address,
-                        src_address,
-                        dst_address,
-                        reason: None,
+                    } => AgentServerEventVo {
+                        content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] closed.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
+                        event_type: AgentServerEventType::Logging,
                     },
                 };
                 if let Err(e) = window.emit(AGENT_SERVER_EVENT, agent_server_backend_to_ui_event) {
