@@ -19,6 +19,7 @@
     },
     "windows": [
       {
+        "label": "main",
         "title": "Ppaass Agent",
         "width": 780,
         "height": 642,

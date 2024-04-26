@@ -200,9 +200,9 @@ fn main() -> Result<()> {
     });
 
     let start_menu_item =
-        CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_START_AGENT.to_string(), "Start agent");
+        CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_START_AGENT.to_string(), "Start");
     let stop_menu_item =
-        CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_STOP_AGENT.to_string(), "Stop agent");
+        CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_STOP_AGENT.to_string(), "Stop");
     let exit_menu_item = CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_EXIT.to_string(), "Exit");
     let system_tray_menu = SystemTrayMenu::new()
         .add_item(start_menu_item)
@@ -230,24 +230,23 @@ fn main() -> Result<()> {
                 SYSTEM_TRAY_MENU_ITEM_START_AGENT => {
                     if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentServerConfigurationUiState>();
-                        tauri::async_runtime::block_on(async {
-                            let agent_server_config_ui_bo = {
-                                let agent_server_config_lock =
-                                    state.agent_server_config.lock().await;
-                                AgentServerConfigurationVo {
-                                    user_token: agent_server_config_lock.user_token().to_owned(),
-                                    proxy_addresses: agent_server_config_lock
-                                        .proxy_addresses()
-                                        .clone(),
-                                    port: agent_server_config_lock.port(),
-                                }
-                            };
-                            start_agent_server(
-                                agent_server_config_ui_bo,
-                                state.clone(),
-                                window.clone(),
-                            );
+                        let agent_server_config_ui_bo = tauri::async_runtime::block_on(async {
+                            let agent_server_config_lock =
+                                state.agent_server_config.lock().await;
+                            AgentServerConfigurationVo {
+                                user_token: agent_server_config_lock.user_token().to_owned(),
+                                proxy_addresses: agent_server_config_lock
+                                    .proxy_addresses()
+                                    .clone(),
+                                port: agent_server_config_lock.port(),
+                            }
                         });
+
+                        start_agent_server(
+                            agent_server_config_ui_bo,
+                            state.clone(),
+                            window.clone(),
+                        );
                     }
                 }
                 _ => {}
