@@ -16,6 +16,20 @@ onMounted(() => {
     title: {
       text: "Network status"
     },
+
+    axisPointer: {
+      show: true,
+      snap: true,
+      lineStyle: {
+        color: "#909090"
+      }
+    },
+    grid: {
+      left: 10,
+      right: 10,
+      bottom: 10,
+      top: 60,
+    },
     xAxis: {
       data: [],
       show: true,
@@ -36,14 +50,32 @@ onMounted(() => {
         name: "downloadMbPerSecond",
         type: "line",
         data: props.downloadMbPerSecondArray,
+        lineStyle: {
+          color: "#3c81d5",
+          width: 1
+        },
         areaStyle: {
           color: "#EEEEEE"
-        }
+        },
+        itemStyle: {
+          color: "#3c81d5",
+          borderWidth: 1,
+          areaColor: "#81a8d6",
+        },
       },
       {
         name: "uploadMbPerSecond",
         type: "line",
         data: props.uploadMbPerSecondArray,
+        lineStyle: {
+          color: "#d5bc3c",
+          width: 1
+        },
+        itemStyle: {
+          color: "#d5bc3c",
+          borderWidth: 1,
+          areaColor: "#d6c881",
+        },
         areaStyle: {
           color: "#EEEEEE"
         }
