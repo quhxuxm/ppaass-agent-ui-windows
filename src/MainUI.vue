@@ -177,19 +177,19 @@ function onStopBtnClick(event: MouseEvent) {
           v-model="userToken"
           :disable="started"
           hint="Register a user from ppaass website"
+          icon="user"
           label="User token:"
           name="user_token"
-          place-holder="Enter the user token"
-          value-type="text">
+          place-holder="Enter the user token" value-type="text">
       </InputField>
       <InputField
           v-model="proxyAddresses"
           :disable="started"
           hint="Proxy addresses are separate with ;"
+          icon="network-wired"
           label="Proxy address:"
           name="proxy_address"
-          place-holder="Enter the proxy addresses"
-          value-type="address">
+          place-holder="Enter the proxy addresses" value-type="address">
       </InputField>
       <InputField
           v-model="port"
@@ -197,13 +197,13 @@ function onStopBtnClick(event: MouseEvent) {
           :max-number="65535"
           :min-number="1025"
           hint="Listening port should between 1025~65535"
-          label="Listening port:"
-          name="listening_port" place-holder="Enter the listening port" value-type="number">
+          icon="ethernet"
+          label="Listening port:" name="listening_port" place-holder="Enter the listening port" value-type="number">
       </InputField>
     </Container>
     <Container class="button_panel">
-      <Button :disable="started" label="Start" @onclick="onStartBtnClick"></Button>
-      <Button :disable="!started" label="Stop" @onclick="onStopBtnClick"></Button>
+      <Button :disable="started" icon="play" label="Start" @onclick="onStartBtnClick"></Button>
+      <Button :disable="!started" icon="power-off" label="Stop" @onclick="onStopBtnClick"></Button>
     </Container>
     <Container class="network_panel">
       <NetworkInfo :download_mb_amount="downloadMbAmount" :download_mb_per_second="downloadMbPerSecond"
