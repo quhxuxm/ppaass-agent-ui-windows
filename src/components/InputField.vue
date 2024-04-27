@@ -119,7 +119,7 @@ const value = defineModel<string>({
 }
 
 .input_field span.field .icon {
-  top: 12px;
+  top: 11px;
   left: 8px;
   position: absolute;
   color: #555555;
@@ -129,7 +129,7 @@ const value = defineModel<string>({
   padding-top: 10px;
   padding-bottom: 10px;
   padding-right: 8px;
-  padding-left: 35px;
+  padding-left: 33px;
   border: 1px solid #0f0f0f;
   border-radius: 5px;
   font-size: 1em;
@@ -141,6 +141,10 @@ const value = defineModel<string>({
 .input_field.disable span.field input {
   color: #999999;
   border: 1px solid #999999;
+}
+
+.input_field.disable span.field .icon {
+  color: #999999;
 }
 
 .input_field.error span.field .icon {
