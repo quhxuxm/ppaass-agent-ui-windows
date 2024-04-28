@@ -15,6 +15,7 @@ const props = defineProps<{
 
 <style scoped>
 section {
+  font-size: 0.7em;
   padding: 3px;
 }
 

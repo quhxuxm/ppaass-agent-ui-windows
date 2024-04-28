@@ -131,7 +131,7 @@ fn start_agent_server(
                         dst_address,
                     } => AgentServerEventVo {
                         content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] initialize success.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
-                        event_type: AgentServerEventType::Logging,
+                        event_type: AgentServerEventType::LoggingInfo,
                     },
                     AgentServerEvent::TunnelInitializeFail {
                         client_socket_address,
@@ -140,7 +140,7 @@ fn start_agent_server(
                         ..
                     } => AgentServerEventVo {
                         content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] initialize fail.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
-                        event_type: AgentServerEventType::Logging,
+                        event_type: AgentServerEventType::LoggingError,
                     },
                     AgentServerEvent::TunnelStartRelay {
                         client_socket_address,
@@ -148,7 +148,7 @@ fn start_agent_server(
                         dst_address,
                     } => AgentServerEventVo {
                         content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] start relay.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
-                        event_type: AgentServerEventType::Logging,
+                        event_type: AgentServerEventType::LoggingInfo,
                     },
                     AgentServerEvent::TunnelClose {
                         client_socket_address,
@@ -156,7 +156,7 @@ fn start_agent_server(
                         dst_address,
                     } => AgentServerEventVo {
                         content: format!("Tunnel of client [{client_socket_address}] from [{}] to [{}] closed.", src_address.map(|v| format!("{v:?}")).unwrap_or(String::new()), dst_address.map(|v| format!("{v:?}")).unwrap_or(String::new())),
-                        event_type: AgentServerEventType::Logging,
+                        event_type: AgentServerEventType::LoggingWarn,
                     },
                 };
                 if let Err(e) = window.emit(AGENT_SERVER_EVENT, agent_server_backend_to_ui_event) {

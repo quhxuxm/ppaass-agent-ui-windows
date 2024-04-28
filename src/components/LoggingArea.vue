@@ -59,12 +59,10 @@ li.info {
 
 li.error {
   color: #ed6464;
-  font-weight: bold;
 }
 
 li.warn {
   color: #d5bc3c;
-  font-weight: bold;
 }
 
 li:last-child {
@@ -81,7 +79,6 @@ li span {
 
 li.info span.agentServer {
   color: #3c81d5;
-  font-weight: bold;
 }
 
 </style>

@@ -114,9 +114,25 @@ listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
     })
     return;
   }
-  if (event.payload.eventType == AgentServerEventType.Logging) {
+  if (event.payload.eventType == AgentServerEventType.LoggingInfo) {
     pushLoggingRecords({
       logType: "info",
+      content: event.payload.content,
+      isAgentServer: false
+    })
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.LoggingWarn) {
+    pushLoggingRecords({
+      logType: "warn",
+      content: event.payload.content,
+      isAgentServer: false
+    })
+    return;
+  }
+  if (event.payload.eventType == AgentServerEventType.LoggingError) {
+    pushLoggingRecords({
+      logType: "error",
       content: event.payload.content,
       isAgentServer: false
     })
@@ -130,15 +146,15 @@ listen<AgentServerEvent>("__AGENT_SERVER_EVENT__", (event) => {
     uploadMbPerSecond.value = networkState.uploadMbPerSecond;
     let downloadPerSecondArray = downloadMbPerSecondArrayRef.value.slice(0, downloadMbPerSecondArrayRef.value.length);
     downloadPerSecondArray.push(networkState.downloadMbPerSecond);
-    if (downloadPerSecondArray.length > 50) {
-      downloadPerSecondArray = downloadPerSecondArray.slice(downloadPerSecondArray.length - 50, downloadPerSecondArray.length);
+    if (downloadPerSecondArray.length > 100) {
+      downloadPerSecondArray = downloadPerSecondArray.slice(downloadPerSecondArray.length - 100, downloadPerSecondArray.length);
     }
     downloadMbPerSecondArrayRef.value = downloadPerSecondArray;
 
     let uploadPerSecondArray = uploadMbPerSecondArrayRef.value.slice(0, uploadMbPerSecondArrayRef.value.length);
     uploadPerSecondArray.push(networkState.uploadMbPerSecond);
-    if (uploadPerSecondArray.length > 50) {
-      uploadPerSecondArray = uploadPerSecondArray.slice(uploadPerSecondArray.length - 50, uploadPerSecondArray.length);
+    if (uploadPerSecondArray.length > 100) {
+      uploadPerSecondArray = uploadPerSecondArray.slice(uploadPerSecondArray.length - 100, uploadPerSecondArray.length);
     }
     uploadMbPerSecondArrayRef.value = uploadPerSecondArray;
     return;
@@ -252,8 +268,6 @@ function onStopBtnClick(event: MouseEvent) {
   margin-top: 10px;
   border: 1px solid #333333;
   color: #333333;
-  font-size: 0.7em;
-  font-weight: bold;
   display: flex;
   flex-direction: column;
 }
@@ -263,8 +277,6 @@ function onStopBtnClick(event: MouseEvent) {
   margin-top: 10px;
   border: 1px solid #333333;
   color: #aaaaaa;
-  font-size: 0.7em;
-  font-weight: bold;
   display: flex;
   flex-direction: column;
 }

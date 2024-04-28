@@ -1,5 +1,7 @@
 export enum AgentServerEventType {
-    Logging = "Logging",
+    LoggingInfo = "LoggingInfo",
+    LoggingWarn = "LoggingWarn",
+    LoggingError = "LoggingError",
     NetworkState = "NetworkState",
     StartSuccess = "StartSuccess",
     StartFail = "StartFail",

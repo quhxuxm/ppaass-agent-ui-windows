@@ -22,9 +22,14 @@ pub enum AgentServerEventType {
     StopSuccess,
     #[serde(rename = "StopFail")]
     StopFail,
-    #[serde(rename = "Logging")]
-    Logging,
+    #[serde(rename = "LoggingError")]
+    LoggingError,
+    #[serde(rename = "LoggingInfo")]
+    LoggingInfo,
+    #[serde(rename = "LoggingWarn")]
+    LoggingWarn,
 }
+
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct AgentServerEventVo {

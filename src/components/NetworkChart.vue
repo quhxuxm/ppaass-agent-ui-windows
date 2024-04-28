@@ -42,7 +42,10 @@ onMounted(() => {
         show: true,
         showMinLabel: false,
         showMaxLabel: true,
-        formatter: "{value} MB/S"
+        formatter: function (value: any) {
+          let valueAsString = parseFloat(value).toFixed(2);
+          return `${valueAsString} MB/s`
+        }
       }
     },
     series: [
