@@ -1,37 +1,31 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+use std::fs::File;
+use std::io::{Read, Seek, Write};
+use std::ops::Deref;
+use std::path::PathBuf;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 use std::sync::Arc;
-
-use clap::Parser;
 use ppaass_agent::{command::AgentServerCommand, config::AgentServerConfig};
 use ppaass_agent::{event::AgentServerEvent, server::AgentServer};
-use tauri::{
-    CustomMenuItem, Manager, Result, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
-    SystemTrayMenuItem, Window, WindowEvent,
-};
+use tauri::{CustomMenuItem, Manager, Result, State, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Window, WindowEvent};
 use tokio::{runtime::Builder, sync::mpsc::Sender};
 use tokio::sync::Mutex;
 use tracing::{error, info};
-
 use crate::vo::{AgentServerConfigurationVo, AgentServerEventType, AgentServerEventVo, NetworkStateVo};
-
 mod vo;
-
 const AGENT_SERVER_EVENT: &str = "__AGENT_SERVER_EVENT__";
 const AGENT_SERVER_UI_RUNTIME_NAME: &str = "__AGENT_SERVER_UI_RUNTIME__";
-
 const SYSTEM_TRAY_MENU_ITEM_START_AGENT: &str = "SYSTEM_TRAY_MENU_ITEM_START_AGENT";
 const SYSTEM_TRAY_MENU_ITEM_STOP_AGENT: &str = "SYSTEM_TRAY_MENU_ITEM_STOP_AGENT";
 const SYSTEM_TRAY_MENU_ITEM_EXIT: &str = "SYSTEM_TRAY_MENU_ITEM_EXIT";
 const MAIN_WINDOW_LABEL: &str = "main";
-
+const CONFIG_FILE_PATH: &str = "resources/config.toml";
 pub struct AgentServerConfigurationUiState {
+    agent_server_config_file: Mutex<File>,
     agent_server_config: Arc<Mutex<AgentServerConfig>>,
     agent_server_command_tx: Mutex<Option<Sender<AgentServerCommand>>>,
 }
-
 #[tauri::command(rename_all = "snake_case")]
 fn load_agent_server_configuration(
     state: State<'_, AgentServerConfigurationUiState>,
@@ -45,7 +39,6 @@ fn load_agent_server_configuration(
         }
     })
 }
-
 #[tauri::command(rename_all = "snake_case")]
 fn start_agent_server(
     arg: AgentServerConfigurationVo,
@@ -64,6 +57,26 @@ fn start_agent_server(
             agent_server_config_lock.set_user_token(arg.user_token);
             agent_server_config_lock.set_port(port);
             agent_server_config_lock.set_proxy_addresses(proxy_addresses);
+            let agent_server_config_string = match toml::to_string(agent_server_config_lock.deref()) {
+                Ok(agent_server_config_string) => agent_server_config_string,
+                Err(e) => {
+                    error!("Fail to convert agent configuration to string because of error: {e:?}");
+                    return;
+                }
+            };
+            let mut agent_server_config_file = state.agent_server_config_file.lock().await;
+            if let Err(e) = agent_server_config_file.rewind() {
+                error!("Fail to rewind agent configuration file to begin because of error: {e:?}");
+                return;
+            };
+            if let Err(e) = agent_server_config_file.set_len(0) {
+                error!("Fail to truncate agent configuration file because of error: {e:?}");
+                return;
+            };
+            if let Err(e) = agent_server_config_file.write_all(agent_server_config_string.as_bytes()) {
+                error!("Fail to save agent configuration to file because of error: {e:?}");
+                return;
+            };
             Arc::new(agent_server_config_lock.clone())
         };
         let agent_server = match AgentServer::new(agent_server_config) {
@@ -166,7 +179,6 @@ fn start_agent_server(
         });
     });
 }
-
 #[tauri::command(rename_all = "snake_case")]
 fn stop_agent_server(state: State<'_, AgentServerConfigurationUiState>) {
     info!("Going to stop agent server.");
@@ -179,9 +191,15 @@ fn stop_agent_server(state: State<'_, AgentServerConfigurationUiState>) {
         }
     })
 }
-
 fn main() -> Result<()> {
-    let agent_server_config = AgentServerConfig::parse();
+    let agent_server_config_file_path = PathBuf::from(CONFIG_FILE_PATH);
+    let mut agent_server_config_file = File::options().create(true).append(false).write(true).read(true).open(&agent_server_config_file_path)?;
+    let agent_server_config = {
+        let mut agent_server_config = String::new();
+        agent_server_config_file.read_to_string(&mut agent_server_config)?;
+        let agent_server_config_from_file = toml::from_str::<AgentServerConfig>(&agent_server_config).expect("Fail to parse agent server configuration file.");
+        agent_server_config_from_file
+    };
     let runtime = Builder::new_multi_thread()
         .enable_all()
         .thread_name(AGENT_SERVER_UI_RUNTIME_NAME)
@@ -192,13 +210,13 @@ fn main() -> Result<()> {
     let initial_state = AgentServerConfigurationUiState {
         agent_server_config: agent_server_config.clone(),
         agent_server_command_tx: Mutex::new(None),
+        agent_server_config_file: Mutex::new(agent_server_config_file),
     };
     let _log_guard = runtime.block_on(async {
         let agent_server_config_lock = agent_server_config.lock().await;
         ppaass_agent::log::init_log(Arc::new(agent_server_config_lock.clone()))
             .expect("Fail to initialize log")
     });
-
     let start_menu_item =
         CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_START_AGENT.to_string(), "Start");
     let stop_menu_item =
@@ -210,7 +228,6 @@ fn main() -> Result<()> {
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(exit_menu_item);
     let system_tray = SystemTray::new().with_menu(system_tray_menu);
-
     tauri::Builder::default()
         .system_tray(system_tray)
         .on_system_tray_event(|app, event| match event {
@@ -241,7 +258,6 @@ fn main() -> Result<()> {
                                 port: agent_server_config_lock.port(),
                             }
                         });
-
                         start_agent_server(
                             agent_server_config_ui_bo,
                             state.clone(),

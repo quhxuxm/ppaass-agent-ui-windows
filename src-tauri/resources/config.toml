@@ -1,0 +1,17 @@
+proxy_addresses = ["45.32.10.177:80"]
+port = 10080
+user_token = "user1"
+ipv6 = false
+rsa_dir = "./resources/rsa/"
+worker_thread_number = 128
+compress = true
+client_receive_buffer_size = 65536
+proxy_send_buffer_size = 65536
+connect_to_proxy_timeout = 120
+max_log_level = "ERROR"
+proxy_connection_read_timeout = 120
+proxy_connection_write_timeout = 120
+client_connection_read_timeout = 120
+client_connection_write_timeout = 120
+server_signal_tick_interval = 1
+
