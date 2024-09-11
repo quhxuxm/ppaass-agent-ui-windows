@@ -1,4 +1,4 @@
-proxy_addresses = ["45.32.10.177:80"]
+proxy_addresses = ["64.176.193.76:80"]
 port = 10080
 user_token = "user1"
 ipv6 = false
@@ -14,4 +14,3 @@ proxy_connection_write_timeout = 120
 client_connection_read_timeout = 120
 client_connection_write_timeout = 120
 server_signal_tick_interval = 1
-

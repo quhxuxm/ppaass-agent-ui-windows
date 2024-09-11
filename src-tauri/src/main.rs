@@ -5,14 +5,19 @@ use std::io::{Read, Seek, Write};
 use std::ops::Deref;
 use std::path::PathBuf;
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-use std::sync::Arc;
+use crate::vo::{
+    AgentServerConfigurationVo, AgentServerEventType, AgentServerEventVo, NetworkStateVo,
+};
 use ppaass_agent::{command::AgentServerCommand, config::AgentServerConfig};
 use ppaass_agent::{event::AgentServerEvent, server::AgentServer};
-use tauri::{CustomMenuItem, Manager, Result, State, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, Window, WindowEvent};
-use tokio::{runtime::Builder, sync::mpsc::Sender};
+use std::sync::Arc;
+use tauri::{
+    CustomMenuItem, Manager, Result, State, SystemTray, SystemTrayEvent, SystemTrayMenu,
+    SystemTrayMenuItem, Window, WindowEvent,
+};
 use tokio::sync::Mutex;
+use tokio::{runtime::Builder, sync::mpsc::Sender};
 use tracing::{error, info};
-use crate::vo::{AgentServerConfigurationVo, AgentServerEventType, AgentServerEventVo, NetworkStateVo};
 mod vo;
 const AGENT_SERVER_EVENT: &str = "__AGENT_SERVER_EVENT__";
 const AGENT_SERVER_UI_RUNTIME_NAME: &str = "__AGENT_SERVER_UI_RUNTIME__";
@@ -57,7 +62,8 @@ fn start_agent_server(
             agent_server_config_lock.set_user_token(arg.user_token);
             agent_server_config_lock.set_port(port);
             agent_server_config_lock.set_proxy_addresses(proxy_addresses);
-            let agent_server_config_string = match toml::to_string(agent_server_config_lock.deref()) {
+            let agent_server_config_string = match toml::to_string(agent_server_config_lock.deref())
+            {
                 Ok(agent_server_config_string) => agent_server_config_string,
                 Err(e) => {
                     error!("Fail to convert agent configuration to string because of error: {e:?}");
@@ -73,7 +79,9 @@ fn start_agent_server(
                 error!("Fail to truncate agent configuration file because of error: {e:?}");
                 return;
             };
-            if let Err(e) = agent_server_config_file.write_all(agent_server_config_string.as_bytes()) {
+            if let Err(e) =
+                agent_server_config_file.write_all(agent_server_config_string.as_bytes())
+            {
                 error!("Fail to save agent configuration to file because of error: {e:?}");
                 return;
             };
@@ -193,12 +201,18 @@ fn stop_agent_server(state: State<'_, AgentServerConfigurationUiState>) {
 }
 fn main() -> Result<()> {
     let agent_server_config_file_path = PathBuf::from(CONFIG_FILE_PATH);
-    let mut agent_server_config_file = File::options().create(true).append(false).write(true).read(true).open(&agent_server_config_file_path)?;
+    let mut agent_server_config_file = File::options()
+        .create(true)
+        .truncate(false)
+        .append(false)
+        .write(true)
+        .read(true)
+        .open(&agent_server_config_file_path)?;
     let agent_server_config = {
         let mut agent_server_config = String::new();
         agent_server_config_file.read_to_string(&mut agent_server_config)?;
-        let agent_server_config_from_file = toml::from_str::<AgentServerConfig>(&agent_server_config).expect("Fail to parse agent server configuration file.");
-        agent_server_config_from_file
+        toml::from_str::<AgentServerConfig>(&agent_server_config)
+            .expect("Fail to parse agent server configuration file.")
     };
     let runtime = Builder::new_multi_thread()
         .enable_all()
@@ -219,8 +233,7 @@ fn main() -> Result<()> {
     });
     let start_menu_item =
         CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_START_AGENT.to_string(), "Start");
-    let stop_menu_item =
-        CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_STOP_AGENT.to_string(), "Stop");
+    let stop_menu_item = CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_STOP_AGENT.to_string(), "Stop");
     let exit_menu_item = CustomMenuItem::new(SYSTEM_TRAY_MENU_ITEM_EXIT.to_string(), "Exit");
     let system_tray_menu = SystemTrayMenu::new()
         .add_item(start_menu_item)
@@ -248,13 +261,10 @@ fn main() -> Result<()> {
                     if let Some(window) = app.get_window(MAIN_WINDOW_LABEL) {
                         let state = window.state::<AgentServerConfigurationUiState>();
                         let agent_server_config_ui_bo = tauri::async_runtime::block_on(async {
-                            let agent_server_config_lock =
-                                state.agent_server_config.lock().await;
+                            let agent_server_config_lock = state.agent_server_config.lock().await;
                             AgentServerConfigurationVo {
                                 user_token: agent_server_config_lock.user_token().to_owned(),
-                                proxy_addresses: agent_server_config_lock
-                                    .proxy_addresses()
-                                    .clone(),
+                                proxy_addresses: agent_server_config_lock.proxy_addresses().clone(),
                                 port: agent_server_config_lock.port(),
                             }
                         });
